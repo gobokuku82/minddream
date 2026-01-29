@@ -10,6 +10,7 @@ ENV/
 env.bak/
 venv.bak/
 reports_moaDREAM/
+reports_mind_dream/
 
 # Virtual Environment
 .venv/
