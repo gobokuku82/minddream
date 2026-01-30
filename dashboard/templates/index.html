@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream Agent Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Dream Agent</h1>
+            <span class="status-badge" id="connectionStatus">Disconnected</span>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Chat Section -->
+            <section class="chat-section">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        <p>Dream Agent에 오신 것을 환영합니다. K-Beauty 트렌드 분석을 시작해보세요.</p>
+                    </div>
+                </div>
+
+                <form class="chat-input" id="chatForm">
+                    <input
+                        type="text"
+                        id="userInput"
+                        placeholder="메시지를 입력하세요..."
+                        autocomplete="off"
+                    >
+                    <button type="submit" id="sendBtn">전송</button>
+                </form>
+            </section>
+
+            <!-- Side Panel -->
+            <aside class="side-panel">
+                <!-- Todo Progress -->
+                <div class="panel-section">
+                    <h3>진행 상황</h3>
+                    <div class="todo-list" id="todoList">
+                        <p class="empty-state">실행 중인 작업이 없습니다.</p>
+                    </div>
+                </div>
+
+                <!-- Session Info -->
+                <div class="panel-section">
+                    <h3>세션 정보</h3>
+                    <div class="session-info">
+                        <p><strong>Session ID:</strong> <span id="sessionId">-</span></p>
+                        <p><strong>Status:</strong> <span id="agentStatus">idle</span></p>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="panel-section">
+                    <h3>컨트롤</h3>
+                    <div class="controls">
+                        <button id="stopBtn" disabled>중지</button>
+                        <button id="clearBtn">초기화</button>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -313,7 +313,7 @@ class InsightExecutor(BaseExecutor):
         Returns:
             인사이트 리포트
         """
-        from ..ml_execution.agents.insight_generator_agent import (
+        from .insight_agents.insight_generator.insight_generator_agent import (
             generate_insights_direct,
             generate_insights_with_trends_direct,
         )

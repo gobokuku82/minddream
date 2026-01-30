@@ -48,19 +48,30 @@ from .hitl_manager import (
 )
 
 # Feedback Manager (Phase 3 강화)
-from .feedback_manager import (
-    FeedbackManager,
-    feedback_manager,
-    # Phase 3 추가
-    QueryLogger,
-    get_query_logger,
-    PlanEditLogger,
-    get_plan_edit_logger,
-    ResultEvaluator,
-    get_result_evaluator,
-    LightweightFeedbackManager,
-    get_lightweight_feedback_manager,
-)
+# TODO: DB 설정 후 활성화 - sLLM 학습 데이터 수집용
+# from .feedback_manager import (
+#     FeedbackManager,
+#     feedback_manager,
+#     # Phase 3 추가
+#     QueryLogger,
+#     get_query_logger,
+#     PlanEditLogger,
+#     get_plan_edit_logger,
+#     ResultEvaluator,
+#     get_result_evaluator,
+#     LightweightFeedbackManager,
+#     get_lightweight_feedback_manager,
+# )
+FeedbackManager = None
+feedback_manager = None
+QueryLogger = None
+get_query_logger = None
+PlanEditLogger = None
+get_plan_edit_logger = None
+ResultEvaluator = None
+get_result_evaluator = None
+LightweightFeedbackManager = None
+get_lightweight_feedback_manager = None
 
 # Todo Failure Recovery (Phase 3.5)
 from .todo_failure_recovery import (
