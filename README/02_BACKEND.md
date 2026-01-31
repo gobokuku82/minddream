@@ -44,8 +44,9 @@ app = FastAPI(
 app.add_middleware(CORSMiddleware, allow_origins=["*"], ...)
 
 # 라우트 등록
-app.include_router(health_router)
-app.include_router(agent_router, prefix="/api/agent")
+app.include_router(health_router, prefix="/health", tags=["health"])
+app.include_router(agent_router, prefix="/api/agent", tags=["agent"])
+app.include_router(websocket_router, tags=["websocket"])
 
 # 정적 파일 & 템플릿
 app.mount("/static", StaticFiles(directory="dashboard/static"))
@@ -73,22 +74,29 @@ async def dashboard(request: Request):
 ### 요청 스키마
 
 ```python
-# POST /api/agent/run-async
+# POST /api/agent/run, /api/agent/run-async
 
 class AgentRequest(BaseModel):
-    message: str              # 사용자 메시지
+    user_input: str           # 사용자 입력 텍스트
+    language: str = "KOR"     # 언어 코드 (KOR, EN, JP)
     session_id: Optional[str] # 세션 ID (없으면 자동 생성)
-    context: Optional[dict]   # 추가 컨텍스트
+
+# 예시
+{
+    "user_input": "라네즈 리뷰를 분석해서 인사이트 뽑아줘",
+    "language": "KOR"
+}
 ```
 
 ### 응답 스키마
 
 ```python
 class AgentResponse(BaseModel):
-    session_id: str
-    status: str          # "started", "running", "completed", "failed"
-    message: str         # 상태 메시지
-    data: Optional[dict] # 실행 결과 (완료 시)
+    session_id: str           # 세션 ID
+    status: str               # "running", "completed", "failed", "stopped"
+    response: Optional[str]   # Agent 응답 텍스트
+    todos: List[Any] = []     # Todo 리스트
+    error: Optional[str]      # 에러 메시지
 ```
 
 ---
@@ -310,7 +318,7 @@ logger.error(f"[Agent] Execution failed: {error}")
 # API 테스트
 curl -X POST http://localhost:8000/api/agent/run-async \
   -H "Content-Type: application/json" \
-  -d '{"message": "라네즈 리뷰 분석해줘"}'
+  -d '{"user_input": "라네즈 리뷰 분석해줘", "language": "KOR"}'
 
 # 헬스체크
 curl http://localhost:8000/health

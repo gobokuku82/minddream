@@ -152,12 +152,12 @@ data/mock/
 # 동기 실행 (짧은 작업)
 curl -X POST http://localhost:8000/api/agent/run \
   -H "Content-Type: application/json" \
-  -d '{"message": "안녕하세요"}'
+  -d '{"user_input": "안녕하세요", "language": "KOR"}'
 
 # 비동기 실행 (긴 작업)
 curl -X POST http://localhost:8000/api/agent/run-async \
   -H "Content-Type: application/json" \
-  -d '{"message": "라네즈 리뷰 분석해줘"}'
+  -d '{"user_input": "라네즈 리뷰 분석해줘", "language": "KOR"}'
 
 # 상태 조회
 curl http://localhost:8000/api/agent/status/{session_id}

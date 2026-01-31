@@ -241,19 +241,29 @@ TOOL_TO_EXECUTOR = {
     "google_trends": "data_executor",
 
     # InsightExecutor
-    "sentiment_analyzer": "insight_executor",
-    "keyword_extractor": "insight_executor",
-    "insight_generator": "insight_executor",
+    "sentiment": "insight_executor",
+    "keyword": "insight_executor",
+    "keyword_extractor": "insight_executor",      # Alias
+    "hashtag": "insight_executor",
+    "problem": "insight_executor",
+    "competitor": "insight_executor",
+    "insight": "insight_executor",
+    "insight_generator": "insight_executor",      # Alias
+    "insight_with_trends": "insight_executor",    # K-Beauty RAG
     "absa_analyzer": "insight_executor",
 
     # ContentExecutor
-    "report_agent": "content_executor",
-    "video_agent": "content_executor",
-    "ad_creative_agent": "content_executor",
+    "report": "content_executor",
+    "report_agent": "content_executor",           # Alias
+    "video": "content_executor",
+    "video_agent": "content_executor",            # Alias
+    "ad_creative": "content_executor",
+    "storyboard_agent": "content_executor",
 
     # OpsExecutor
-    "sales_agent": "ops_executor",
-    "dashboard_agent": "ops_executor",
+    "sales": "ops_executor",
+    "inventory": "ops_executor",
+    "dashboard": "ops_executor",
 }
 ```
 
