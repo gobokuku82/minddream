@@ -58,6 +58,7 @@ from .supervisor import (
     ExecutionSupervisor,
     get_execution_supervisor,
     TOOL_TO_EXECUTOR,
+    USE_MOCK_MODE,
 )
 
 # Execution Nodes
@@ -69,14 +70,8 @@ from .execution_node import (
     ops_execution_node,
 )
 
-# New Executor Structure (v0.005)
-from . import collection_executor
-from . import analysis_executor
-from . import insight_agents
-from . import content_agents
-from . import report_executor
-from . import ops_agents
-from . import toolkit
+# Domain Agents (이동됨: execution/domain/)
+from . import domain
 
 __all__ = [
     # Core
@@ -89,19 +84,13 @@ __all__ = [
     "register_executor",
     "get_registered_executors",
     "create_executor",
-    # Executors (legacy)
+    # Executors
     "DataExecutor",
     "InsightExecutor",
     "ContentExecutor",
     "OpsExecutor",
-    # New Agent Modules (v0.005)
-    "collection_executor",
-    "analysis_executor",
-    "insight_agents",
-    "content_agents",
-    "report_executor",
-    "ops_agents",
-    "toolkit",
+    # Domain Agents
+    "domain",
     # Supervisor
     "ExecutionSupervisor",
     "get_execution_supervisor",

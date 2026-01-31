@@ -19,6 +19,9 @@ from .core.base_executor import ExecutionResult
 
 logger = logging.getLogger(__name__)
 
+# Mock 모드 설정 (True = 모든 실행을 MockExecutor로, False = 실제 Executor 시도)
+USE_MOCK_MODE = True
+
 
 # 도구 -> Executor 매핑
 TOOL_TO_EXECUTOR: Dict[str, str] = {
@@ -84,6 +87,7 @@ class ExecutionSupervisor:
         enable_hitl: bool = True,
         enable_cache: bool = True,
         parallel_execution: bool = False,
+        use_mock: bool = None,
     ):
         """ExecutionSupervisor 초기화
 
@@ -91,19 +95,22 @@ class ExecutionSupervisor:
             enable_hitl: HITL 활성화 여부
             enable_cache: 결과 캐싱 활성화 여부
             parallel_execution: 독립적인 Todo의 병렬 실행 여부
+            use_mock: Mock 모드 사용 여부 (None이면 USE_MOCK_MODE 사용)
         """
         self.enable_hitl = enable_hitl
         self.enable_cache = enable_cache
         self.parallel_execution = parallel_execution
+        self.use_mock = use_mock if use_mock is not None else USE_MOCK_MODE
 
         self._registry = get_executor_registry()
         self._cache = get_execution_cache() if enable_cache else None
         self._execution_context: Dict[str, Any] = {}
         self._execution_history: List[Dict[str, Any]] = []
+        self._mock_executor = None
 
         logger.info(
             f"ExecutionSupervisor initialized "
-            f"(hitl={enable_hitl}, cache={enable_cache}, parallel={parallel_execution})"
+            f"(hitl={enable_hitl}, cache={enable_cache}, parallel={parallel_execution}, mock={self.use_mock})"
         )
 
     def get_executor_for_tool(self, tool_name: str) -> Optional[BaseExecutor]:
@@ -115,20 +122,34 @@ class ExecutionSupervisor:
         Returns:
             Executor 인스턴스 또는 None
         """
+        # Mock 모드면 MockExecutor 반환
+        if self.use_mock:
+            return self._get_mock_executor()
+
         executor_name = TOOL_TO_EXECUTOR.get(tool_name)
         if not executor_name:
             # Registry에서 동적으로 찾기
             executor = self._registry.get_by_tool(tool_name)
             if executor:
                 return executor
-            logger.warning(f"No executor found for tool: {tool_name}")
-            return None
+
+            # Fallback to MockExecutor
+            logger.warning(f"No executor found for tool: {tool_name}, using MockExecutor")
+            return self._get_mock_executor()
 
         try:
             return self._registry.get(executor_name, enable_hitl=self.enable_hitl)
         except KeyError:
-            logger.warning(f"Executor not registered: {executor_name}")
-            return None
+            # Fallback to MockExecutor
+            logger.warning(f"Executor not registered: {executor_name}, using MockExecutor")
+            return self._get_mock_executor()
+
+    def _get_mock_executor(self) -> BaseExecutor:
+        """MockExecutor 싱글톤 반환"""
+        if self._mock_executor is None:
+            from .mock_executor import MockExecutor
+            self._mock_executor = MockExecutor(enable_hitl=self.enable_hitl)
+        return self._mock_executor
 
     async def execute_todo(
         self,
