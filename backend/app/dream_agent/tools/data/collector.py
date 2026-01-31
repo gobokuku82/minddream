@@ -119,29 +119,43 @@ def _collect_with_mock(
     keyword: str,
     limit: int,
 ) -> List[Dict[str, Any]]:
-    """Mock 데이터로 수집"""
-    from backend.app.services.ml.collectors import get_mock_collector
+    """Mock 데이터로 수집 (data/mock 폴더에서 로드)"""
+    from .mock_loader import get_mock_loader, is_mock_mode
 
-    logger.debug(f"[Collector] Using mock data for {platform}...")
+    # data/mock 폴더 기반 mock 데이터 사용
+    if is_mock_mode():
+        logger.debug(f"[Collector] Loading mock data from data/mock for {platform}...")
+        loader = get_mock_loader()
+        reviews = loader.load_reviews(platform)[:limit]
+        logger.debug(f"[Collector] Loaded {len(reviews)} mock reviews from data/mock")
+        return reviews
 
-    collector = get_mock_collector(platform)
-    reviews = collector.collect(keyword, limit=limit)
+    # 기존 서비스 기반 mock (fallback)
+    try:
+        from backend.app.services.ml.collectors import get_mock_collector
 
-    formatted_reviews = []
-    for r in reviews:
-        formatted_reviews.append({
-            "text": r.text,
-            "source": r.source,
-            "product_name": r.product_name,
-            "rating": r.rating,
-            "author": r.author,
-            "date": r.date,
-            "skin_type": r.skin_type,
-            "effectiveness": r.effectiveness,
-            "likes": r.likes,
-        })
+        logger.debug(f"[Collector] Using service mock data for {platform}...")
+        collector = get_mock_collector(platform)
+        raw_reviews = collector.collect(keyword, limit=limit)
 
-    return formatted_reviews
+        formatted_reviews = []
+        for r in raw_reviews:
+            formatted_reviews.append({
+                "text": r.text,
+                "source": r.source,
+                "product_name": r.product_name,
+                "rating": r.rating,
+                "author": r.author,
+                "date": r.date,
+                "skin_type": r.skin_type,
+                "effectiveness": r.effectiveness,
+                "likes": r.likes,
+            })
+        return formatted_reviews
+
+    except ImportError:
+        logger.warning(f"[Collector] Mock collector not available, returning empty list")
+        return []
 
 
 def check_and_filter_duplicates(reviews: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:

@@ -6,6 +6,10 @@
 - collector.py: 멀티 플랫폼 리뷰/댓글 수집
 - preprocessor.py: 텍스트 전처리
 - external_api.py: Google Trends 등 외부 API
+- mock_loader.py: data/mock 폴더에서 테스트 데이터 로드
+
+Mock 모드:
+    환경변수 USE_MOCK_DATA=true 설정 시 data/mock 폴더에서 데이터 로드
 """
 
 # Collector Tools
@@ -57,6 +61,15 @@ from .external_api import (
     compare_brand_trends_direct,
 )
 
+# Mock Data Loader
+from .mock_loader import (
+    MockDataLoader,
+    get_mock_loader,
+    reset_mock_loader,
+    is_mock_mode,
+    get_mock_data_path,
+)
+
 __all__ = [
     # Collector @tool 함수
     "collect_reviews",
@@ -95,4 +108,10 @@ __all__ = [
     # External API Direct 함수
     "analyze_trends_direct",
     "compare_brand_trends_direct",
+    # Mock Data Loader
+    "MockDataLoader",
+    "get_mock_loader",
+    "reset_mock_loader",
+    "is_mock_mode",
+    "get_mock_data_path",
 ]

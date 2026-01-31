@@ -54,32 +54,46 @@ def analyze_trends(
             }
         }
     """
-    from backend.app.services.ml.trends import get_google_trends_analyzer
+    from .mock_loader import is_mock_mode, get_mock_loader
 
     logger.info(f"[ExternalAPI] Analyzing trends for '{keyword}'")
 
-    # 환경 변수로 mock 여부 결정 (기본: 실제 API 사용)
-    use_mock = os.environ.get("USE_MOCK_TRENDS", "false").lower() == "true"
-    analyzer = get_google_trends_analyzer(use_mock=use_mock)
-    result = analyzer.analyze(keyword, related_keywords, timeframe, geo)
+    # Mock 모드: data/mock에서 트렌드 데이터 로드
+    if is_mock_mode():
+        logger.info(f"[ExternalAPI] Using mock trends data from data/mock")
+        loader = get_mock_loader()
+        return loader.get_trends_result(keyword, timeframe, geo or "KR")
 
-    logger.info(f"[ExternalAPI] Trends analysis complete (is_mock={result.is_mock})")
+    # 실제 API 사용
+    try:
+        from backend.app.services.ml.trends import get_google_trends_analyzer
 
-    return {
-        "success": True,
-        "is_mock": result.is_mock,  # True if mock data, False if real Google Trends data
-        "data": {
-            "keyword": result.keyword,
-            "timeframe": result.timeframe,
-            "geo": result.geo,
-            "interest_over_time": result.interest_over_time,
-            "rising_queries": result.rising_queries,
-            "top_queries": result.top_queries,
-            "top_regions": result.top_regions,
-            "trend_direction": result.trend_direction,
-            "change_percent": result.change_percent,
+        # 환경 변수로 서비스 내 mock 여부 결정
+        use_service_mock = os.environ.get("USE_MOCK_TRENDS", "false").lower() == "true"
+        analyzer = get_google_trends_analyzer(use_mock=use_service_mock)
+        result = analyzer.analyze(keyword, related_keywords, timeframe, geo)
+
+        logger.info(f"[ExternalAPI] Trends analysis complete (is_mock={result.is_mock})")
+
+        return {
+            "success": True,
+            "is_mock": result.is_mock,
+            "data": {
+                "keyword": result.keyword,
+                "timeframe": result.timeframe,
+                "geo": result.geo,
+                "interest_over_time": result.interest_over_time,
+                "rising_queries": result.rising_queries,
+                "top_queries": result.top_queries,
+                "top_regions": result.top_regions,
+                "trend_direction": result.trend_direction,
+                "change_percent": result.change_percent,
+            }
         }
-    }
+    except ImportError:
+        logger.warning("[ExternalAPI] Trends analyzer not available, using mock data")
+        loader = get_mock_loader()
+        return loader.get_trends_result(keyword, timeframe, geo or "KR")
 
 
 @tool

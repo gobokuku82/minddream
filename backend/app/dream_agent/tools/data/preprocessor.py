@@ -20,12 +20,13 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 @tool
-def preprocess_reviews(reviews: List[Dict]) -> Dict[str, Any]:
+def preprocess_reviews(reviews: List[Dict], use_mock: bool = False) -> Dict[str, Any]:
     """
     리뷰 텍스트 전처리 (언어 감지, 정규화, 토큰화)
 
     Args:
         reviews: collect_reviews의 결과 리뷰 리스트
+        use_mock: True면 data/mock에서 전처리된 결과 로드
 
     Returns:
         전처리된 리뷰 데이터:
@@ -36,11 +37,24 @@ def preprocess_reviews(reviews: List[Dict]) -> Dict[str, Any]:
             "language_stats": {...}     # 언어별 통계
         }
     """
-    from backend.app.services.ml.preprocessing.pipeline import get_preprocessing_pipeline
+    from .mock_loader import is_mock_mode, get_mock_loader
+
+    # Mock 모드: data/mock에서 전처리된 결과 로드
+    if use_mock or is_mock_mode():
+        logger.info(f"[Preprocessor] Using mock preprocessed data")
+        loader = get_mock_loader()
+        return loader.get_preprocessed_reviews()
+
+    # 실제 전처리 로직
+    try:
+        from backend.app.services.ml.preprocessing.pipeline import get_preprocessing_pipeline
+        pipeline = get_preprocessing_pipeline()
+    except ImportError:
+        logger.warning("[Preprocessor] Pipeline not available, using simple preprocessing")
+        return _simple_preprocess(reviews)
 
     logger.info(f"[Preprocessor] Starting preprocessing for {len(reviews)} reviews")
 
-    pipeline = get_preprocessing_pipeline()
     preprocessed = []
     lang_stats = {}
 
@@ -75,6 +89,45 @@ def preprocess_reviews(reviews: List[Dict]) -> Dict[str, Any]:
         "count": len(preprocessed),
         "filtered_count": len(reviews) - len(preprocessed),
         "language_stats": lang_stats
+    }
+
+
+def _simple_preprocess(reviews: List[Dict]) -> Dict[str, Any]:
+    """간단한 전처리 (파이프라인 없이)"""
+    import re
+
+    preprocessed = []
+    lang_stats = {}
+
+    for review in reviews:
+        text = review.get("text", "")
+        if not text:
+            continue
+
+        # 간단한 정규화
+        cleaned = re.sub(r'\s+', ' ', text).strip()
+        tokens = cleaned.split()[:20]
+
+        # 언어 감지 (간단한 휴리스틱)
+        korean_chars = len(re.findall(r'[가-힣]', text))
+        lang = "ko" if korean_chars > len(text) * 0.3 else "en"
+
+        preprocessed.append({
+            **review,
+            "cleaned_text": cleaned,
+            "language": lang,
+            "tokens": tokens,
+            "hashtags": review.get("hashtags", []),
+            "quality_score": 0.7,
+        })
+
+        lang_stats[lang] = lang_stats.get(lang, 0) + 1
+
+    return {
+        "reviews": preprocessed,
+        "count": len(preprocessed),
+        "filtered_count": len(reviews) - len(preprocessed),
+        "language_stats": lang_stats,
     }
 
 
