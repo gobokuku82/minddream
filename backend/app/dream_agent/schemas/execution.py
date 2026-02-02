@@ -1,9 +1,10 @@
 """Execution Layer I/O Schema
 
 Execution Layer의 입출력 스키마를 정의합니다.
+Phase 3: field_validator 기반 검증 추가.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Dict, Any, List
 from ..models.todo import TodoItem
 from ..models.execution import ExecutionResult, ExecutionContext
@@ -16,6 +17,15 @@ class ExecutionInput(BaseModel):
     previous_results: Dict[str, Any] = Field(default_factory=dict)
     use_mock: bool = False
 
+    @field_validator('todo')
+    @classmethod
+    def validate_todo(cls, v):
+        if v.status not in ['pending', 'in_progress']:
+            raise ValueError(f"Todo must be pending or in_progress, got: {v.status}")
+        if not v.tool:
+            raise ValueError("Todo must have a tool specified")
+        return v
+
 
 class ExecutionOutput(BaseModel):
     """Execution Layer 출력"""
@@ -26,3 +36,12 @@ class ExecutionOutput(BaseModel):
     next_todos: List[str] = Field(default_factory=list)
     requires_user_input: bool = False
     user_input_message: Optional[str] = None
+
+    @model_validator(mode='after')
+    def validate_output_consistency(self):
+        """실행 결과와 Todo 상태 일관성 검증"""
+        if self.result.success and self.updated_todo.status not in ['completed', 'in_progress']:
+            pass  # 경고만
+        if not self.result.success and self.updated_todo.status == 'completed':
+            raise ValueError("Todo marked completed but execution failed")
+        return self

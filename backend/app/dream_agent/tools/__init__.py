@@ -47,6 +47,15 @@ from .hot_reload import (
     stop_hot_reload,
 )
 
+# Phase 3: Validator
+from .validator import (
+    ToolValidator,
+    ValidationResult,
+    get_tool_validator,
+    validate_tool_spec,
+    validate_all_tools,
+)
+
 __all__ = [
     # 기존
     "BaseTool",
@@ -75,4 +84,10 @@ __all__ = [
     "get_tool_hot_reloader",
     "start_hot_reload",
     "stop_hot_reload",
+    # Phase 3: Validator
+    "ToolValidator",
+    "ValidationResult",
+    "get_tool_validator",
+    "validate_tool_spec",
+    "validate_all_tools",
 ]
