@@ -111,9 +111,27 @@ async def _run_agent_background(
         async for event in agent.astream(state, config):
             # WebSocket으로 상태 업데이트 전송
             if "todos" in event:
+                # Todo 객체를 직렬화
+                todos_data = []
+                for todo in event["todos"]:
+                    if hasattr(todo, "model_dump"):
+                        todos_data.append(todo.model_dump())
+                    elif hasattr(todo, "dict"):
+                        todos_data.append(todo.dict())
+                    elif isinstance(todo, dict):
+                        todos_data.append(todo)
+                    else:
+                        todos_data.append({
+                            "id": getattr(todo, "id", str(uuid.uuid4())),
+                            "task": getattr(todo, "task", str(todo)),
+                            "status": getattr(todo, "status", "pending"),
+                            "layer": getattr(todo, "layer", "planning"),
+                            "metadata": getattr(todo, "metadata", {}),
+                        })
+
                 await manager.send_update(session_id, {
                     "type": "todo_update",
-                    "data": {"todos_count": len(event["todos"])},
+                    "data": {"todos": todos_data},
                 })
 
         # 완료 메시지

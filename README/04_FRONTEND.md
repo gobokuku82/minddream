@@ -19,37 +19,46 @@ dashboard/
 
 ---
 
-## 대시보드 레이아웃
+## 3-Panel 레이아웃
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Dream Agent Dashboard                          [● Connected]    │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌────────────────────────────────┐  ┌────────────────────────┐ │
-│  │                                │  │  Session Info          │ │
-│  │                                │  │  ─────────────         │ │
-│  │       Chat Messages            │  │  ID: abc123            │ │
-│  │                                │  │  Status: running       │ │
-│  │  [User] 라네즈 리뷰 분석해줘    │  │                        │ │
-│  │                                │  ├────────────────────────┤ │
-│  │  [Agent] 분석을 시작합니다...   │  │  Todo Progress         │ │
-│  │                                │  │  ─────────────         │ │
-│  │  [System] Todo 1 완료          │  │  ☑ 데이터 수집         │ │
-│  │  [System] Todo 2 진행중        │  │  ☐ 전처리              │ │
-│  │                                │  │  ☐ 감성 분석           │ │
-│  │                                │  │  ☐ 인사이트 생성       │ │
-│  │                                │  │                        │ │
-│  │                                │  ├────────────────────────┤ │
-│  │                                │  │  [Stop] [Clear]        │ │
-│  └────────────────────────────────┘  └────────────────────────┘ │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  메시지를 입력하세요...                           [Send]  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│  Dream Agent                         Session: abc123...  [● Connected]    │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌─────────────────────────┐  ┌─────────────────────────────────────────┐│
+│  │  Progress          [2]  │  │  Chat                     [중지] [초기화]││
+│  │  ───────────────────────│  │  ────────────────────────────────────────││
+│  │  ● 데이터 수집 - 실행중  │  │                                          ││
+│  │    10:30:15             │  │  [System] Dream Agent에 오신 것을...     ││
+│  │  ✓ 초기화 - 완료        │  │                                          ││
+│  │    10:30:10             │  │  [User] 라네즈 리뷰 분석해줘             ││
+│  │                   (RED) │  │                                          ││
+│  ├─────────────────────────┤  │  [Agent] 분석을 시작합니다...            ││
+│  │  Todo List         [4]  │  │                                          ││
+│  │  ───────────────────────│  │                                          ││
+│  │  ▸ 데이터 수집          │  │                                          ││
+│  │    collector | ml_exec  │  │                                          ││
+│  │  ▸ 전처리               │  │                                          ││
+│  │    preprocessor | ml_exec│  │                                          ││
+│  │  ▸ 감성 분석            │  │                                          ││
+│  │    sentiment | ml_exec  │  │                                          ││
+│  │  ▸ 인사이트 생성        │  │                                          ││
+│  │    insight | ml_exec    │  │  ┌─────────────────────────────────────┐ ││
+│  │                (YELLOW) │  │  │ 메시지를 입력하세요...       [전송] │ ││
+│  └─────────────────────────┘  │  └─────────────────────────────────────┘ ││
+│                               │                                    (BLUE)││
+│                               └─────────────────────────────────────────┘│
+└───────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 패널 구성
+
+| 패널 | 색상 | 설명 |
+|------|------|------|
+| **Progress** | 빨간색 테두리 | 실행 중인 작업의 실시간 콜백 표시 |
+| **Todo List** | 노란색 테두리 | 생성된 Todo 목록 표시 |
+| **Chat** | 파란색 테두리 | 사용자-에이전트 대화 |
 
 ---
 
@@ -64,49 +73,66 @@ dashboard/
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <!-- 헤더 -->
-    <header>
-        <h1>Dream Agent Dashboard</h1>
-        <span id="connection-status" class="status disconnected">
-            ● Disconnected
-        </span>
-    </header>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Dream Agent</h1>
+            <div class="header-right">
+                <span class="session-badge" id="sessionBadge">Session: -</span>
+                <span class="status-badge" id="connectionStatus">Disconnected</span>
+            </div>
+        </header>
 
-    <!-- 메인 컨텐츠 -->
-    <main>
-        <!-- 채팅 영역 -->
-        <section id="chat-section">
-            <div id="messages"></div>
-        </section>
+        <!-- Main: 3-Panel Layout -->
+        <main class="main">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Progress (Red) -->
+                <section class="panel-section progress-section">
+                    <div class="panel-header">
+                        <h3>Progress</h3>
+                        <span class="badge" id="progressCount">0</span>
+                    </div>
+                    <div class="progress-list" id="progressList">
+                        <p class="empty-state">실행 중인 작업이 없습니다.</p>
+                    </div>
+                </section>
 
-        <!-- 사이드 패널 -->
-        <aside id="side-panel">
-            <!-- 세션 정보 -->
-            <div id="session-info">
-                <h3>Session Info</h3>
-                <p>ID: <span id="session-id">-</span></p>
-                <p>Status: <span id="agent-status">idle</span></p>
+                <!-- Todo (Yellow) -->
+                <section class="panel-section todo-section">
+                    <div class="panel-header">
+                        <h3>Todo List</h3>
+                        <span class="badge" id="todoCount">0</span>
+                    </div>
+                    <div class="todo-list" id="todoList">
+                        <p class="empty-state">생성된 Todo가 없습니다.</p>
+                    </div>
+                </section>
             </div>
 
-            <!-- Todo 진행상황 -->
-            <div id="todo-section">
-                <h3>Todo Progress</h3>
-                <ul id="todo-list"></ul>
-            </div>
+            <!-- Chat (Blue) -->
+            <section class="chat-section">
+                <div class="panel-header">
+                    <h3>Chat</h3>
+                    <div class="chat-controls">
+                        <button id="stopBtn" class="btn-stop" disabled>중지</button>
+                        <button id="clearBtn" class="btn-clear">초기화</button>
+                    </div>
+                </div>
 
-            <!-- 컨트롤 버튼 -->
-            <div id="controls">
-                <button id="stop-btn">Stop</button>
-                <button id="clear-btn">Clear</button>
-            </div>
-        </aside>
-    </main>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        <p>Dream Agent에 오신 것을 환영합니다.</p>
+                    </div>
+                </div>
 
-    <!-- 입력 영역 -->
-    <footer>
-        <input type="text" id="message-input" placeholder="메시지를 입력하세요...">
-        <button id="send-btn">Send</button>
-    </footer>
+                <form class="chat-input" id="chatForm">
+                    <input type="text" id="userInput" placeholder="메시지를 입력하세요...">
+                    <button type="submit" id="sendBtn">전송</button>
+                </form>
+            </section>
+        </main>
+    </div>
 
     <script src="/static/js/app.js"></script>
 </body>
@@ -124,329 +150,223 @@ class DreamAgentClient {
     constructor() {
         this.ws = null;
         this.sessionId = null;
-        this.isConnected = false;
+        this.todos = [];
+        this.progressItems = [];
     }
 
-    // WebSocket 연결
-    connect(sessionId) {
-        this.sessionId = sessionId;
-        this.ws = new WebSocket(`ws://localhost:8000/ws/${sessionId}`);
-
-        this.ws.onopen = () => {
-            this.isConnected = true;
-            this.updateConnectionStatus(true);
-        };
-
-        this.ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            this.handleMessage(message);
-        };
-
-        this.ws.onclose = () => {
-            this.isConnected = false;
-            this.updateConnectionStatus(false);
-        };
-    }
-
-    // 메시지 처리
-    handleMessage(message) {
+    // WebSocket 메시지 핸들러
+    handleWSMessage(message) {
         switch (message.type) {
             case 'todo_update':
-                this.updateTodo(message.data);
+                this.handleTodoUpdate(message.data);
+                break;
+            case 'progress':
+                this.handleProgress(message.data);
                 break;
             case 'complete':
-                this.showResponse(message.data);
+                this.handleComplete(message.data);
                 break;
             case 'error':
-                this.showError(message.data);
-                break;
-            case 'hitl_request':
-                this.showHITLPrompt(message.data);
+                this.handleError(message.data);
                 break;
         }
     }
 
-    // 에이전트 실행
-    async runAgent(message) {
-        const response = await fetch('/api/agent/run-async', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: message,
-                session_id: this.sessionId
-            })
-        });
+    // Todo 업데이트 → Todo 패널 + Progress 패널
+    handleTodoUpdate(data) {
+        // Todo 리스트 업데이트
+        if (data.todos) {
+            this.todos = data.todos;
+        }
+        this.renderTodoList();
 
-        const result = await response.json();
-        if (!this.isConnected) {
-            this.connect(result.session_id);
+        // in_progress 상태면 Progress에 추가
+        if (data.todo?.status === 'in_progress') {
+            this.addProgressItem({
+                id: data.todo.id,
+                task: data.todo.task,
+                status: 'running',
+                time: new Date().toLocaleTimeString(),
+            });
         }
     }
 
-    // 실행 중지
-    async stopAgent() {
-        await fetch(`/api/agent/stop/${this.sessionId}`, {
-            method: 'POST'
+    // Progress 콜백 → Progress 패널
+    handleProgress(data) {
+        this.addProgressItem({
+            id: data.id,
+            task: data.message,
+            status: data.status,
+            time: new Date().toLocaleTimeString(),
         });
     }
-
-    // UI 업데이트 메서드
-    updateConnectionStatus(connected) { ... }
-    updateTodo(todoData) { ... }
-    showResponse(data) { ... }
-    showError(error) { ... }
-    addMessage(type, content) { ... }
 }
+```
 
-// 초기화
-const client = new DreamAgentClient();
+### Progress 패널 렌더링
+
+```javascript
+renderProgressList() {
+    const el = this.elements.progressList;
+    const runningCount = this.progressItems.filter(p => p.status === 'running').length;
+
+    this.elements.progressCount.textContent = runningCount;
+
+    el.innerHTML = this.progressItems.map(item => `
+        <div class="progress-item ${item.status}">
+            <div class="task-name">
+                ${item.status === 'running' ? '<span class="loading"></span>' : ''}
+                ${item.task}
+            </div>
+            <div class="task-status">${this.getStatusText(item.status)}</div>
+            <div class="task-time">${item.time}</div>
+        </div>
+    `).join('');
+}
+```
+
+### Todo 패널 렌더링
+
+```javascript
+renderTodoList() {
+    const el = this.elements.todoList;
+
+    this.elements.todoCount.textContent = this.todos.length;
+
+    el.innerHTML = this.todos.map(todo => `
+        <div class="todo-item ${todo.status}">
+            <div class="task">${todo.task}</div>
+            <div class="meta">
+                <span class="tool">${todo.metadata?.execution?.tool || ''}</span>
+                <span class="layer">${todo.layer || ''}</span>
+            </div>
+        </div>
+    `).join('');
+}
 ```
 
 ---
 
-## CSS 스타일 (style.css)
+## CSS 스타일 요약
+
+### 레이아웃
 
 ```css
-/* 레이아웃 */
-body {
+/* 3-Panel Grid */
+.main {
+    display: grid;
+    grid-template-columns: 380px 1fr;  /* Left: 380px, Right: Chat */
+    gap: 16px;
+}
+
+.left-column {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    gap: 16px;
 }
 
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: #1a1a2e;
-    color: white;
+/* Progress: 35% 높이 */
+.progress-section {
+    flex: 0 0 auto;
+    max-height: 35%;
+    border: 2px solid #ef5350;  /* Red */
 }
 
-main {
-    display: flex;
+/* Todo: 나머지 공간 */
+.todo-section {
     flex: 1;
-    overflow: hidden;
+    border: 2px solid #ffa726;  /* Yellow/Orange */
 }
 
-/* 채팅 영역 */
-#chat-section {
-    flex: 1;
-    padding: 1rem;
-    overflow-y: auto;
+/* Chat: 오른쪽 전체 */
+.chat-section {
+    border: 2px solid #42a5f5;  /* Blue */
 }
+```
 
-/* 메시지 스타일 */
-.message {
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    border-radius: 8px;
-    max-width: 80%;
+### 패널 색상 테마
+
+```css
+/* Progress (Red Theme) */
+.progress-section .panel-header {
+    background: linear-gradient(135deg, #ffebee 0%, #fff 100%);
 }
+.progress-section .panel-header h3 { color: #c62828; }
+.progress-section .badge { background: #ef5350; color: white; }
 
-.message.user {
+/* Todo (Yellow Theme) */
+.todo-section .panel-header {
+    background: linear-gradient(135deg, #fff8e1 0%, #fff 100%);
+}
+.todo-section .panel-header h3 { color: #e65100; }
+.todo-section .badge { background: #ffa726; color: white; }
+
+/* Chat (Blue Theme) */
+.chat-section .panel-header {
+    background: linear-gradient(135deg, #e3f2fd 0%, #fff 100%);
+}
+.chat-section .panel-header h3 { color: #1565c0; }
+```
+
+### 상태별 스타일
+
+```css
+/* Progress Item */
+.progress-item.running {
+    border-left-color: #2196f3;
     background: #e3f2fd;
-    margin-left: auto;
+    animation: pulse 1.5s infinite;
 }
+.progress-item.completed { border-left-color: #4caf50; background: #e8f5e9; }
+.progress-item.failed { border-left-color: #f44336; background: #ffebee; }
 
-.message.assistant {
-    background: #f5f5f5;
-}
-
-.message.system {
-    background: #fff3e0;
-    font-size: 0.875rem;
-}
-
-.message.error {
-    background: #ffebee;
-    color: #c62828;
-}
-
-/* 사이드 패널 */
-#side-panel {
-    width: 280px;
-    background: #f8f9fa;
-    padding: 1rem;
-    border-left: 1px solid #dee2e6;
-}
-
-/* 연결 상태 */
-.status {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-}
-
-.status.connected {
-    background: #c8e6c9;
-    color: #2e7d32;
-}
-
-.status.disconnected {
-    background: #ffcdd2;
-    color: #c62828;
-}
-
-/* Todo 리스트 */
-#todo-list {
-    list-style: none;
-    padding: 0;
-}
-
-#todo-list li {
-    padding: 0.5rem;
-    margin-bottom: 0.25rem;
-    border-radius: 4px;
-    background: white;
-}
-
-#todo-list li.completed {
-    text-decoration: line-through;
-    color: #888;
-}
-
-#todo-list li.in_progress {
-    border-left: 3px solid #2196f3;
-}
-
-/* 입력 영역 */
-footer {
-    display: flex;
-    padding: 1rem;
-    background: white;
-    border-top: 1px solid #dee2e6;
-}
-
-#message-input {
-    flex: 1;
-    padding: 0.75rem;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-right: 0.5rem;
-}
-
-#send-btn {
-    padding: 0.75rem 1.5rem;
-    background: #1976d2;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-#send-btn:hover {
-    background: #1565c0;
-}
+/* Todo Item */
+.todo-item.pending { border-left-color: #ffa726; background: #fffaf0; }
+.todo-item.in_progress { border-left-color: #2196f3; background: #e3f2fd; }
+.todo-item.completed { border-left-color: #4caf50; background: #e8f5e9; opacity: 0.7; }
+.todo-item.failed { border-left-color: #f44336; background: #ffebee; }
 ```
 
 ---
 
-## 주요 기능
+## WebSocket 메시지 타입
 
-### 1. 실시간 WebSocket 통신
+### Server → Client
 
-```javascript
-// 연결 → 메시지 전송 → 수신 → UI 업데이트
+| 타입 | 설명 | Progress 패널 | Todo 패널 |
+|------|------|---------------|-----------|
+| `todo_update` | Todo 상태 변경 | in_progress → 추가 | 목록 갱신 |
+| `progress` | 실행 콜백 | 항목 추가/업데이트 | - |
+| `complete` | 실행 완료 | 모두 완료 처리 | - |
+| `error` | 오류 발생 | 실패 표시 | - |
 
-ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
-
-    if (msg.type === 'todo_update') {
-        // Todo 진행상황 업데이트
-        updateTodoUI(msg.data);
-    }
-
-    if (msg.type === 'complete') {
-        // 최종 응답 표시
-        showFinalResponse(msg.data.response);
-    }
-};
-```
-
-### 2. Todo 진행상황 표시
+### 데이터 형식
 
 ```javascript
-function updateTodoUI(todoData) {
-    const todoList = document.getElementById('todo-list');
-    const todoItem = document.getElementById(`todo-${todoData.id}`);
-
-    if (todoItem) {
-        todoItem.className = todoData.status;
-        todoItem.querySelector('.progress').textContent =
-            `${todoData.progress}%`;
+// todo_update
+{
+    "type": "todo_update",
+    "data": {
+        "todo": {
+            "id": "uuid",
+            "task": "데이터 수집",
+            "status": "in_progress",
+            "metadata": { "execution": { "tool": "collector" } },
+            "layer": "ml_execution"
+        }
     }
 }
-```
 
-### 3. 메시지 타입별 스타일링
-
-```javascript
-function addMessage(type, content) {
-    const messagesEl = document.getElementById('messages');
-    const msgEl = document.createElement('div');
-
-    msgEl.className = `message ${type}`;
-    msgEl.innerHTML = content;
-
-    messagesEl.appendChild(msgEl);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+// progress (실행 콜백)
+{
+    "type": "progress",
+    "data": {
+        "id": "task-id",
+        "message": "Amazon에서 리뷰 수집 중...",
+        "status": "running",
+        "detail": "50/100 수집"
+    }
 }
-
-// 사용 예
-addMessage('user', '라네즈 리뷰 분석해줘');
-addMessage('assistant', '분석을 시작합니다...');
-addMessage('system', 'Todo 1: 데이터 수집 완료');
-addMessage('error', '실행 중 오류가 발생했습니다.');
-```
-
-### 4. Keep-Alive (Ping-Pong)
-
-```javascript
-// 30초마다 ping 전송
-setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'ping' }));
-    }
-}, 30000);
-```
-
----
-
-## 이벤트 핸들러
-
-```javascript
-// 전송 버튼
-document.getElementById('send-btn').addEventListener('click', () => {
-    const input = document.getElementById('message-input');
-    const message = input.value.trim();
-
-    if (message) {
-        client.runAgent(message);
-        client.addMessage('user', message);
-        input.value = '';
-    }
-});
-
-// Enter 키로 전송
-document.getElementById('message-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        document.getElementById('send-btn').click();
-    }
-});
-
-// 중지 버튼
-document.getElementById('stop-btn').addEventListener('click', () => {
-    client.stopAgent();
-});
-
-// 클리어 버튼
-document.getElementById('clear-btn').addEventListener('click', () => {
-    document.getElementById('messages').innerHTML = '';
-    document.getElementById('todo-list').innerHTML = '';
-});
 ```
 
 ---
@@ -459,7 +379,7 @@ cd backend
 uvicorn api.main:app --reload --port 8000
 
 # 2. 브라우저에서 접속
-# http://localhost:8000
+http://localhost:8000
 ```
 
 ---
@@ -467,7 +387,8 @@ uvicorn api.main:app --reload --port 8000
 ## 향후 개선사항
 
 - [ ] React/Vue 기반 SPA로 전환
-- [ ] 실시간 차트 시각화
+- [ ] Progress 실시간 차트 (진행률 바)
+- [ ] Todo 드래그앤드롭 재정렬
 - [ ] 히스토리 저장/불러오기
 - [ ] 다크모드 지원
-- [ ] 반응형 디자인 개선
+- [ ] 반응형 디자인 (모바일)
