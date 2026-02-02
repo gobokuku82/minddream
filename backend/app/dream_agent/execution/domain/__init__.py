@@ -1,9 +1,10 @@
 """Domain Agents - 도메인별 실행 Agent
 
 실제 비즈니스 로직을 수행하는 Agent들입니다.
-현재는 보관용으로, 필요시 개별 import하여 사용합니다.
+Phase 2: BaseDomainAgent 기반 표준화.
 
 구조:
+- base_agent.py: BaseDomainAgent 추상 클래스 (Phase 2)
 - collection/: 데이터 수집 (collector, preprocessor)
 - analysis/: 분석 (sentiment, keyword, problem, hashtag, competitor, trends)
 - insight/: 인사이트 생성
@@ -13,10 +14,23 @@
 - toolkit/: 공용 유틸리티
 """
 
-# 현재는 Mock 모드로 동작하므로 직접 import하지 않음
-# 필요시 개별 모듈에서 import
+# Phase 2: BaseDomainAgent
+from .base_agent import (
+    BaseDomainAgent,
+    DomainAgentRegistry,
+    get_domain_agent_registry,
+    register_domain_agent,
+    get_domain_agent,
+)
 
 __all__ = [
+    # Phase 2: Base classes
+    "BaseDomainAgent",
+    "DomainAgentRegistry",
+    "get_domain_agent_registry",
+    "register_domain_agent",
+    "get_domain_agent",
+    # Sub-packages
     "collection",
     "analysis",
     "insight",

@@ -8,6 +8,7 @@
 - tools/discovery.py: YAML 기반 Tool Discovery (Phase 0)
 - tools/loader.py: YAML Tool Loader (Phase 0)
 - tools/compat.py: ToolSpec ↔ BaseTool 호환 레이어 (Phase 1)
+- tools/hot_reload.py: YAML 변경 감지 및 자동 리로드 (Phase 2)
 - tools/definitions/: YAML Tool 정의 파일
 - tools/data/: 데이터 수집/처리 도구
 - tools/analysis/: 분석 도구
@@ -37,6 +38,15 @@ from .compat import (
     LAYER_TO_EXECUTOR,
 )
 
+# Phase 2: Hot Reload
+from .hot_reload import (
+    YAMLWatcher,
+    ToolHotReloader,
+    get_tool_hot_reloader,
+    start_hot_reload,
+    stop_hot_reload,
+)
+
 __all__ = [
     # 기존
     "BaseTool",
@@ -59,4 +69,10 @@ __all__ = [
     "get_tool_dependencies",
     "get_tool_produces",
     "LAYER_TO_EXECUTOR",
+    # Phase 2: Hot Reload
+    "YAMLWatcher",
+    "ToolHotReloader",
+    "get_tool_hot_reloader",
+    "start_hot_reload",
+    "stop_hot_reload",
 ]
