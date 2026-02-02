@@ -83,6 +83,15 @@ from .execution import (
     ExecutionStatus,
 )
 
+# Tool Models (Phase 0 신규)
+from .tool import (
+    ToolSpec,
+    ToolType,
+    ToolParameter,
+    ToolParameterType,
+    ToolRegistry,
+)
+
 __all__ = [
     # Todo
     "TodoItem",
@@ -130,4 +139,10 @@ __all__ = [
     "ExecutionResult",
     "ExecutionContext",
     "ExecutionStatus",
+    # Tool (Phase 0 신규)
+    "ToolSpec",
+    "ToolType",
+    "ToolParameter",
+    "ToolParameterType",
+    "ToolRegistry",
 ]

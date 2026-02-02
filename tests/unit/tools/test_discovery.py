@@ -172,3 +172,152 @@ class TestYAMLLoader:
             tools = load_tools_from_yaml(yaml_dir)
             discovery = get_tool_discovery()
             assert len(discovery.list_all()) >= 1
+
+
+# ============================================================
+# Phase 1: Compatibility Layer 테스트
+# ============================================================
+from backend.app.dream_agent.tools.compat import (
+    ToolSpecAdapter,
+    spec_to_base_tool,
+    base_tool_to_spec,
+    get_unified_tool_access,
+    UnifiedToolAccess,
+    LAYER_TO_EXECUTOR,
+)
+
+
+class TestToolSpecAdapter:
+    """ToolSpecAdapter 테스트 (Phase 1)"""
+
+    def setup_method(self):
+        ToolDiscovery.reset()
+
+    def test_adapter_creation(self):
+        """어댑터 생성"""
+        spec = ToolSpec(
+            name="test_tool",
+            description="Test description",
+            tool_type=ToolType.DATA,
+            executor="test.executor",
+            layer="ml_execution"
+        )
+        adapter = ToolSpecAdapter(spec)
+
+        assert adapter.name == "test_tool"
+        assert adapter.description == "Test description"
+        assert adapter.category == "data"
+
+    def test_adapter_metadata(self):
+        """어댑터 메타데이터"""
+        spec = ToolSpec(
+            name="test",
+            description="Test",
+            tool_type=ToolType.ANALYSIS,
+            executor="test",
+            layer="ml_execution",
+            tags=["nlp", "sentiment"],
+            dependencies=["preprocessor"]
+        )
+        adapter = ToolSpecAdapter(spec)
+        metadata = adapter.get_metadata()
+
+        assert metadata["name"] == "test"
+        assert metadata["layer"] == "ml_execution"
+        assert "nlp" in metadata["tags"]
+
+    def test_spec_to_base_tool(self):
+        """spec_to_base_tool 변환"""
+        spec = ToolSpec(
+            name="converter_test",
+            description="Test",
+            tool_type=ToolType.CONTENT,
+            executor="test"
+        )
+        tool = spec_to_base_tool(spec)
+
+        assert tool.name == "converter_test"
+        assert tool.category == "content"
+
+
+class TestUnifiedToolAccess:
+    """UnifiedToolAccess 테스트 (Phase 1)"""
+
+    def setup_method(self):
+        ToolDiscovery.reset()
+        # Reset unified access singleton
+        import backend.app.dream_agent.tools.compat as compat
+        compat._unified_access = None
+
+    def test_get_from_discovery(self):
+        """Discovery에서 도구 조회"""
+        discovery = get_tool_discovery()
+        discovery.register(ToolSpec(
+            name="unified_test",
+            description="Test",
+            tool_type=ToolType.DATA,
+            executor="test",
+            layer="ml_execution"
+        ))
+
+        access = get_unified_tool_access()
+        tool = access.get("unified_test")
+
+        assert tool is not None
+        assert tool.name == "unified_test"
+
+    def test_get_spec(self):
+        """ToolSpec 조회"""
+        discovery = get_tool_discovery()
+        discovery.register(ToolSpec(
+            name="spec_test",
+            description="Test",
+            tool_type=ToolType.ANALYSIS,
+            executor="test",
+            layer="ml_execution"
+        ))
+
+        access = get_unified_tool_access()
+        spec = access.get_spec("spec_test")
+
+        assert spec is not None
+        assert spec.name == "spec_test"
+        assert spec.tool_type == ToolType.ANALYSIS
+
+    def test_get_by_layer(self):
+        """레이어별 조회"""
+        discovery = get_tool_discovery()
+        discovery.register(ToolSpec(
+            name="ml_tool", description="", tool_type=ToolType.DATA,
+            executor="x", layer="ml_execution"
+        ))
+        discovery.register(ToolSpec(
+            name="biz_tool", description="", tool_type=ToolType.CONTENT,
+            executor="x", layer="biz_execution"
+        ))
+
+        access = get_unified_tool_access()
+        ml_tools = access.get_by_layer("ml_execution")
+        biz_tools = access.get_by_layer("biz_execution")
+
+        assert len(ml_tools) == 1
+        assert ml_tools[0].name == "ml_tool"
+        assert len(biz_tools) == 1
+        assert biz_tools[0].name == "biz_tool"
+
+    def test_execution_order(self):
+        """실행 순서 조회"""
+        discovery = get_tool_discovery()
+        discovery.register(ToolSpec(
+            name="step1", description="", tool_type=ToolType.DATA,
+            executor="x", dependencies=[]
+        ))
+        discovery.register(ToolSpec(
+            name="step2", description="", tool_type=ToolType.ANALYSIS,
+            executor="x", dependencies=["step1"]
+        ))
+
+        access = get_unified_tool_access()
+        order = access.get_execution_order(["step2", "step1"])
+
+        assert order.index("step1") < order.index("step2")

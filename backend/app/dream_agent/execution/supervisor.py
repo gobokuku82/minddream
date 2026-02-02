@@ -1,6 +1,7 @@
 """ExecutionSupervisor - 실행 관리 감독자
 
 모든 Executor를 관리하고 Todo 기반 실행을 조율합니다.
+Phase 1: ToolDiscovery 통합으로 YAML 기반 동적 도구 매핑 지원.
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,42 +18,61 @@ from .core import (
 )
 from .core.base_executor import ExecutionResult
 
+# Phase 1: Tool Discovery 통합
+from ..tools.discovery import get_tool_discovery
+
 logger = logging.getLogger(__name__)
 
 
-# 도구 -> Executor 매핑
+# ============================================================
+# Legacy 도구 -> Executor 매핑 (하위 호환성 유지)
+# Phase 1 이후: ToolDiscovery에서 layer 기반으로 동적 결정
+# ============================================================
 TOOL_TO_EXECUTOR: Dict[str, str] = {
-    # Data Executor
+    # Data Executor (ML Layer)
     "collector": "data_executor",
+    "review_collector": "data_executor",  # YAML 이름
     "preprocessor": "data_executor",
     "google_trends": "data_executor",
-    # Insight Executor
+    # Insight Executor (ML Layer)
     "sentiment": "insight_executor",
+    "sentiment_analyzer": "insight_executor",  # YAML 이름
     "keyword": "insight_executor",
-    "keyword_extractor": "insight_executor",  # Alias
+    "keyword_extractor": "insight_executor",
     "hashtag": "insight_executor",
+    "hashtag_analyzer": "insight_executor",  # YAML 이름
     "problem": "insight_executor",
+    "problem_classifier": "insight_executor",  # YAML 이름
     "competitor": "insight_executor",
+    "competitor_analyzer": "insight_executor",  # YAML 이름
     "insight": "insight_executor",
-    "insight_generator": "insight_executor",  # Alias
-    "insight_with_trends": "insight_executor",  # K-Beauty 트렌드 인사이트
-    "analyzer": "insight_executor",  # Alias (분석 작업)
-    "absa_analyzer": "insight_executor",  # ABSA 감성 분석
-    # Content Executor
+    "insight_generator": "insight_executor",
+    "insight_with_trends": "insight_executor",
+    "analyzer": "insight_executor",
+    "absa_analyzer": "insight_executor",
+    # Content Executor (BIZ Layer)
     "report": "content_executor",
-    "report_agent": "content_executor",  # Alias
+    "report_agent": "content_executor",
+    "report_generator": "content_executor",  # YAML 이름
     "video": "content_executor",
-    "video_agent": "content_executor",  # Alias
+    "video_agent": "content_executor",
     "ad_creative": "content_executor",
-    "ad_creative_agent": "content_executor",  # Alias
-    "storyboard_agent": "content_executor",  # Alias
-    # Ops Executor
+    "ad_creative_agent": "content_executor",
+    "storyboard_agent": "content_executor",
+    # Ops Executor (BIZ Layer)
     "sales": "ops_executor",
-    "sales_agent": "ops_executor",  # Alias
+    "sales_agent": "ops_executor",
     "inventory": "ops_executor",
-    "inventory_agent": "ops_executor",  # Alias
+    "inventory_agent": "ops_executor",
     "dashboard": "ops_executor",
-    "dashboard_agent": "ops_executor",  # Alias
+    "dashboard_agent": "ops_executor",
+}
+
+# Layer -> Executor 매핑 (Phase 1: YAML 기반 동적 결정용)
+LAYER_TO_EXECUTOR_MAP: Dict[str, str] = {
+    "ml_execution": "insight_executor",  # 기본 ML 레이어
+    "biz_execution": "content_executor",  # 기본 BIZ 레이어
+    "data_collection": "data_executor",
 }
 
 
@@ -120,10 +140,24 @@ class ExecutionSupervisor:
             Executor 인스턴스 또는 None
 
         Note:
+            Phase 1: ToolDiscovery를 통한 동적 Executor 결정을 우선 시도하고,
+            실패 시 static TOOL_TO_EXECUTOR 매핑을 사용합니다.
             Mock 데이터는 각 Executor 내부에서 mock_loader를 통해 처리됩니다.
-            환경변수 USE_MOCK_DATA=true 설정 시 data/mock 폴더에서 데이터를 로드합니다.
         """
-        executor_name = TOOL_TO_EXECUTOR.get(tool_name)
+        executor_name = None
+
+        # Phase 1: ToolDiscovery에서 layer 기반으로 Executor 결정
+        discovery = get_tool_discovery()
+        spec = discovery.get(tool_name)
+        if spec and spec.layer:
+            executor_name = LAYER_TO_EXECUTOR_MAP.get(spec.layer)
+            if executor_name:
+                logger.debug(f"[Phase 1] Resolved executor '{executor_name}' from ToolDiscovery layer: {spec.layer}")
+
+        # Fallback: Legacy static 매핑
+        if not executor_name:
+            executor_name = TOOL_TO_EXECUTOR.get(tool_name)
+
         if not executor_name:
             # Registry에서 동적으로 찾기
             executor = self._registry.get_by_tool(tool_name)
@@ -138,6 +172,45 @@ class ExecutionSupervisor:
         except KeyError:
             logger.warning(f"Executor not registered: {executor_name}")
             return None
+
+    def get_execution_order(self, tool_names: List[str]) -> List[str]:
+        """ToolDiscovery를 통한 의존성 기반 실행 순서 결정
+
+        Args:
+            tool_names: 도구 이름 리스트
+
+        Returns:
+            정렬된 도구 이름 리스트 (의존성 순서)
+
+        Note:
+            Phase 1: YAML에 정의된 dependencies를 기반으로 위상 정렬합니다.
+        """
+        discovery = get_tool_discovery()
+        return discovery.get_execution_order(tool_names)
+
+    def get_tool_dependencies(self, tool_name: str) -> List[str]:
+        """도구의 의존성 목록 조회
+
+        Args:
+            tool_name: 도구 이름
+
+        Returns:
+            의존하는 도구 이름 리스트
+        """
+        discovery = get_tool_discovery()
+        return discovery.get_dependencies(tool_name)
+
+    def get_tool_spec(self, tool_name: str) -> Optional[Any]:
+        """도구의 ToolSpec 조회
+
+        Args:
+            tool_name: 도구 이름
+
+        Returns:
+            ToolSpec 인스턴스 또는 None
+        """
+        discovery = get_tool_discovery()
+        return discovery.get(tool_name)
 
     async def execute_todo(
         self,

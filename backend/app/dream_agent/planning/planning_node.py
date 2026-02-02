@@ -1,7 +1,10 @@
-"""Planning Layer - 계획 수립 노드"""
+"""Planning Layer - 계획 수립 노드
+
+Phase 1: ToolDiscovery 통합으로 YAML 기반 동적 도구/레이어 추론 지원.
+"""
 
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
 
 from backend.app.core.logging import get_logger, LogContext
 from backend.app.dream_agent.states.accessors import (
@@ -23,7 +26,123 @@ from backend.app.dream_agent.workflow_manager.planning_manager import (
     execution_graph_builder
 )
 
+# Phase 1: Tool Discovery 통합
+from backend.app.dream_agent.tools.discovery import get_tool_discovery
+
 logger = get_logger(__name__)
+
+
+def _get_layer_from_discovery(tool_name: str) -> Optional[str]:
+    """ToolDiscovery에서 도구의 layer 조회
+
+    Args:
+        tool_name: 도구 이름
+
+    Returns:
+        layer 문자열 또는 None
+    """
+    discovery = get_tool_discovery()
+    spec = discovery.get(tool_name)
+    return spec.layer if spec else None
+
+
+def _infer_tool_and_layer(
+    task: str,
+    tool: str,
+    user_input: str,
+    ml_tools: list,
+    biz_tools: list,
+    ml_keywords: list,
+    biz_keywords: list,
+    log: Any
+) -> Tuple[str, str]:
+    """도구와 레이어를 추론
+
+    Phase 1: ToolDiscovery를 우선 사용하고, 없으면 fallback 로직 사용.
+
+    Args:
+        task: 작업 설명
+        tool: LLM이 반환한 도구 이름 (빈 문자열일 수 있음)
+        user_input: 사용자 입력
+        ml_tools: ML 도구 목록 (fallback)
+        biz_tools: BIZ 도구 목록 (fallback)
+        ml_keywords: ML 키워드 목록
+        biz_keywords: BIZ 키워드 목록
+        log: 로거
+
+    Returns:
+        (tool, layer) 튜플
+    """
+    task_lower = task.lower() if task else ""
+    inferred_tool = tool
+    inferred_layer = None
+
+    # Phase 1: ToolDiscovery에서 layer 조회
+    if tool:
+        discovery_layer = _get_layer_from_discovery(tool)
+        if discovery_layer:
+            log.debug(f"[Phase 1] Found layer '{discovery_layer}' from ToolDiscovery for tool '{tool}'")
+            return tool, discovery_layer
+
+    # Tool 추론 (tool이 없는 경우)
+    if not tool:
+        # task 내용에서 tool 추론
+        if any(kw in task_lower for kw in ["수집", "collect", "크롤", "crawl"]):
+            inferred_tool = "review_collector"  # YAML 이름 사용
+        elif any(kw in task_lower for kw in ["전처리", "preprocess", "정제", "clean"]):
+            inferred_tool = "preprocessor"
+        elif any(kw in task_lower for kw in ["키워드", "keyword", "추출", "extract"]):
+            inferred_tool = "keyword_extractor"
+        elif any(kw in task_lower for kw in ["해시태그", "hashtag", "바이럴"]):
+            inferred_tool = "hashtag_analyzer"
+        elif any(kw in task_lower for kw in ["감성", "sentiment", "긍정", "부정"]):
+            inferred_tool = "sentiment_analyzer"
+        elif any(kw in task_lower for kw in ["문제", "problem", "이슈", "불만"]):
+            inferred_tool = "problem_classifier"
+        elif any(kw in task_lower for kw in ["인사이트", "insight", "분석 결과", "도출"]):
+            user_input_lower = user_input.lower() if user_input else ""
+            if any(kw in user_input_lower for kw in ["트렌드", "trend", "k-beauty", "kbeauty", "글로벌", "global", "마케팅", "marketing"]):
+                inferred_tool = "insight_with_trends"
+            else:
+                inferred_tool = "insight_generator"
+        elif any(kw in task_lower for kw in ["트렌드", "trend", "google"]):
+            inferred_tool = "google_trends"
+        elif any(kw in task_lower for kw in ["경쟁", "competitor", "swot", "비교"]):
+            inferred_tool = "competitor_analyzer"
+        elif any(kw in task_lower for kw in ["보고서", "report", "리포트"]):
+            inferred_tool = "report_generator"
+        elif any(kw in task_lower for kw in ["대시보드", "dashboard"]):
+            inferred_tool = "dashboard_agent"
+        elif any(kw in task_lower for kw in ["광고", "ad", "크리에이티브"]):
+            inferred_tool = "ad_creative_agent"
+        elif any(kw in task_lower for kw in ["영상", "비디오", "video", "동영상", "숏폼", "릴스", "reels"]):
+            inferred_tool = "video_agent"
+        elif any(kw in task_lower for kw in ["스토리보드", "storyboard", "콘텐츠 기획", "content plan"]):
+            inferred_tool = "storyboard_agent"
+        else:
+            inferred_tool = "preprocessor"  # 기본값
+
+        log.info(f"[Phase 1] Auto-inferred tool '{inferred_tool}' for task: {task}")
+
+    # Phase 1: 추론된 tool로 ToolDiscovery에서 layer 재조회
+    if inferred_tool:
+        discovery_layer = _get_layer_from_discovery(inferred_tool)
+        if discovery_layer:
+            return inferred_tool, discovery_layer
+
+    # Fallback: 기존 로직으로 layer 결정
+    if inferred_tool in ml_tools:
+        inferred_layer = "ml_execution"
+    elif inferred_tool in biz_tools:
+        inferred_layer = "biz_execution"
+    elif any(kw in task_lower for kw in ml_keywords):
+        inferred_layer = "ml_execution"
+    elif any(kw in task_lower for kw in biz_keywords):
+        inferred_layer = "biz_execution"
+    else:
+        inferred_layer = "ml_execution"  # 기본값
+
+    return inferred_tool, inferred_layer
 
 
 async def planning_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -113,113 +232,56 @@ async def planning_node(state: Dict[str, Any]) -> Dict[str, Any]:
                         continue  # 이 todo는 스킵
 
                     log.info(f"Auto-generated task '{task}' for todo {idx} (tool={tool})")
-                task_lower = task.lower() if task else ""
 
-                # ML 도구 목록 (모든 변형 포함)
+                # ================================================================
+                # Phase 1: Tool/Layer 추론 (ToolDiscovery 우선, Fallback 로직 보조)
+                # ================================================================
                 ml_tools = [
-                    "collector", "preprocessor", "analyzer", "insight",
+                    "collector", "review_collector", "preprocessor", "analyzer", "insight",
                     "keyword_extractor", "absa_analyzer", "insight_generator",
                     "problem_classifier", "google_trends", "trends",
                     "sentiment", "sentiment_analyzer", "extractor",
-                    # 새로 추가된 Agent
-                    "hashtag_analyzer", "hashtag",
-                    "competitor_analyzer", "competitor", "brand_comparison",
-                    # K-Beauty 트렌드 RAG 인사이트
+                    "hashtag_analyzer", "hashtag", "competitor_analyzer", "competitor",
                     "insight_with_trends", "kbeauty_insight", "trend_insight", "rag_insight"
                 ]
-
-                # BIZ 도구 목록
                 biz_tools = [
-                    "report_agent", "dashboard_agent", "ad_creative_agent",
-                    "storyboard_agent", "video_agent", "sales_agent"
+                    "report_agent", "report_generator", "dashboard_agent", "ad_creative_agent",
+                    "storyboard_agent", "video_agent", "sales_agent", "inventory_agent"
                 ]
-
-                # task 내용 키워드
                 ml_task_keywords = [
                     "수집", "collect", "전처리", "preprocess", "분석", "analy",
                     "감성", "sentiment", "키워드", "keyword", "인사이트", "insight",
-                    "트렌드", "trend", "추출", "extract",
-                    # 새로 추가된 키워드
-                    "해시태그", "hashtag", "바이럴", "viral",
-                    "경쟁사", "competitor", "브랜드 비교", "brand comparison", "SWOT"
+                    "트렌드", "trend", "추출", "extract", "해시태그", "hashtag",
+                    "바이럴", "viral", "경쟁사", "competitor", "SWOT"
                 ]
-
                 biz_task_keywords = [
-                    "보고서 생성", "report 생성", "대시보드", "dashboard", "광고 생성", "ad creative",
+                    "보고서", "report", "대시보드", "dashboard", "광고", "ad",
                     "스토리보드", "storyboard", "비디오", "video", "영상", "동영상",
-                    "콘텐츠 제작", "content creation", "숏폼", "릴스", "reels", "마케팅 영상"
+                    "숏폼", "릴스", "reels", "마케팅"
                 ]
 
-                # ================================================================
-                # Tool 자동 추론 (tool이 누락된 경우)
-                # ================================================================
-                inferred_tool = None
+                # Phase 1 헬퍼 함수로 tool/layer 추론
+                inferred_tool, inferred_layer = _infer_tool_and_layer(
+                    task=task,
+                    tool=tool,
+                    user_input=user_input,
+                    ml_tools=ml_tools,
+                    biz_tools=biz_tools,
+                    ml_keywords=ml_task_keywords,
+                    biz_keywords=biz_task_keywords,
+                    log=log
+                )
+
+                # 추론 결과 적용
                 if not tool:
-                    # task 내용에서 tool 추론
-                    if any(kw in task_lower for kw in ["수집", "collect", "크롤", "crawl"]):
-                        inferred_tool = "collector"
-                    elif any(kw in task_lower for kw in ["전처리", "preprocess", "정제", "clean"]):
-                        inferred_tool = "preprocessor"
-                    elif any(kw in task_lower for kw in ["키워드", "keyword", "추출", "extract"]):
-                        inferred_tool = "keyword_extractor"
-                    elif any(kw in task_lower for kw in ["해시태그", "hashtag", "바이럴"]):
-                        inferred_tool = "hashtag_analyzer"
-                    elif any(kw in task_lower for kw in ["감성", "sentiment", "긍정", "부정"]):
-                        inferred_tool = "sentiment_analyzer"
-                    elif any(kw in task_lower for kw in ["문제", "problem", "이슈", "불만"]):
-                        inferred_tool = "problem_classifier"
-                    elif any(kw in task_lower for kw in ["인사이트", "insight", "분석 결과", "도출"]):
-                        # 사용자 요청에 트렌드 관련 키워드가 있으면 K-Beauty RAG 인사이트 사용
-                        user_input_lower = user_input.lower() if user_input else ""
-                        if any(kw in user_input_lower for kw in ["트렌드", "trend", "k-beauty", "kbeauty", "글로벌", "global", "마케팅", "marketing"]):
-                            inferred_tool = "insight_with_trends"
-                            log.info(f"Using insight_with_trends due to trend context in user request")
-                        else:
-                            inferred_tool = "insight"
-                    elif any(kw in task_lower for kw in ["트렌드", "trend", "google"]):
-                        # 트렌드 분석 (인사이트가 아닌 순수 트렌드 검색)
-                        inferred_tool = "google_trends"
-                    elif any(kw in task_lower for kw in ["경쟁", "competitor", "swot", "비교"]):
-                        inferred_tool = "competitor_analyzer"
-                    elif any(kw in task_lower for kw in ["보고서", "report", "리포트"]):
-                        inferred_tool = "report_agent"
-                    elif any(kw in task_lower for kw in ["대시보드", "dashboard"]):
-                        inferred_tool = "dashboard_agent"
-                    elif any(kw in task_lower for kw in ["광고", "ad", "크리에이티브"]):
-                        inferred_tool = "ad_creative_agent"
-                    elif any(kw in task_lower for kw in ["영상", "비디오", "video", "동영상", "숏폼", "릴스", "reels"]):
-                        # 비디오 생성 요청: storyboard_agent → video_agent 순서
-                        inferred_tool = "video_agent"
-                    elif any(kw in task_lower for kw in ["스토리보드", "storyboard", "콘텐츠 기획", "content plan"]):
-                        inferred_tool = "storyboard_agent"
-                    else:
-                        inferred_tool = "preprocessor"  # 기본값
-
                     tool = inferred_tool
-                    log.info(f"Auto-inferred tool '{tool}' for todo: {task}")
+                    log.info(f"[Phase 1] Using inferred tool '{tool}' for todo: {task}")
 
-                # ================================================================
-                # layer 결정 로직 (tool 기반 우선, task 키워드 보조)
-                # ================================================================
-                inferred_layer = None
-                if tool in ml_tools:
-                    inferred_layer = "ml_execution"
-                elif tool in biz_tools:
-                    inferred_layer = "biz_execution"
-                elif any(kw in task_lower for kw in ml_task_keywords):
-                    inferred_layer = "ml_execution"
-                elif any(kw in task_lower for kw in biz_task_keywords):
-                    inferred_layer = "biz_execution"
-                else:
-                    inferred_layer = "ml_execution"  # 기본값은 ML
-
-                # layer가 없으면 추론된 값 사용
                 if not layer:
                     layer = inferred_layer
-                    log.info(f"Auto-inferred layer '{layer}' for todo: {task} (tool={tool})")
-                # layer가 있지만 tool과 불일치하면 수정 (tool 기반이 우선)
+                    log.info(f"[Phase 1] Using inferred layer '{layer}' for todo: {task} (tool={tool})")
                 elif layer != inferred_layer and tool:
-                    log.warning(f"Layer mismatch for '{task}': LLM said '{layer}', but tool '{tool}' requires '{inferred_layer}'. Correcting.")
+                    log.warning(f"[Phase 1] Layer mismatch for '{task}': LLM='{layer}', inferred='{inferred_layer}'. Using inferred.")
                     layer = inferred_layer
 
                 todo = create_todo(
