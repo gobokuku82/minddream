@@ -2,8 +2,8 @@
 
 from typing import Dict, List, Optional, Tuple, Any
 from backend.app.core.logging import get_logger
-from backend.app.dream_agent.states import TodoItem
-from backend.app.dream_agent.states.resource import (
+from backend.app.dream_agent.models import TodoItem
+from backend.app.dream_agent.models.resource import (
     AgentResource, ResourceAllocation, ResourceConstraints, ResourcePlan,
     create_agent_resource, create_resource_allocation, create_resource_constraints
 )

@@ -1,4 +1,8 @@
-"""Todo State V2.0 - Todo 아이템 Pydantic 모델"""
+"""Todo Models V2.0 - Todo 아이템 Pydantic 모델
+
+이 파일은 states/todo.py에서 models/로 이동됨.
+Pydantic 모델만 포함하며, LangGraph 상태와 분리.
+"""
 
 from typing import Literal, Optional, List, Dict, Any
 from pydantic import BaseModel, Field

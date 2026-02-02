@@ -115,8 +115,8 @@ def todo_reducer(current: List[Any], updates: List[Any]) -> List[Any]:
     Returns:
         병합된 Todo 리스트
     """
-    # Import here to avoid circular dependency
-    from .todo import TodoItem
+    # Import from models/ package
+    from ..models.todo import TodoItem
 
     # ID -> TodoItem 매핑
     todo_map = {todo.id: todo for todo in current}

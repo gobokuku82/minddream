@@ -2,7 +2,7 @@
 
 from typing import List, Literal, Optional
 from datetime import datetime
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 
 
 def update_todo_status(

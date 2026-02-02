@@ -10,8 +10,8 @@ from datetime import datetime
 import logging
 import uuid
 
-from ...states.plan import Plan, PlanChange, PlanVersion, create_plan_change
-from ...states.todo import TodoItem, TodoMetadata, TodoDependencyConfig
+from ...models.plan import Plan, PlanChange, PlanVersion, create_plan_change
+from ...models.todo import TodoItem, TodoMetadata, TodoDependencyConfig
 
 logger = logging.getLogger(__name__)
 

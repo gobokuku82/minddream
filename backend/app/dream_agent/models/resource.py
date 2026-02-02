@@ -1,4 +1,8 @@
-"""Resource State - 자원 관리 및 할당"""
+"""Resource Models - 자원 관리 및 할당 모델
+
+이 파일은 states/resource.py에서 models/로 이동됨.
+Pydantic 모델만 포함.
+"""
 
 from typing import List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, Field

@@ -18,8 +18,8 @@ import logging
 
 if TYPE_CHECKING:
     from ...states.base import AgentState
-    from ...states.plan import Plan
-    from ...states.todo import TodoItem
+    from ...models.plan import Plan
+    from ...models.todo import TodoItem
 
 logger = logging.getLogger(__name__)
 

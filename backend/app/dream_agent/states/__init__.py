@@ -1,16 +1,27 @@
-"""States - 상태 정의 (Pydantic Models Only)
+"""States - LangGraph 상태 정의
 
-IMPORTANT: Todo helper functions moved to workflow_manager!
+이 패키지는 LangGraph 상태 관련 코드를 포함합니다:
+- base.py: AgentState (TypedDict)
+- reducers.py: LangGraph Reducers
+- accessors.py: State Accessor 함수들
 
-Old import (deprecated):
-    from backend.app.dream_agent.states import create_todo, update_todo_status
+Pydantic 모델은 models/ 패키지로 이동되었으며,
+하위 호환성을 위해 여기서 re-export됩니다.
 
-New import:
-    from backend.app.dream_agent.workflow_manager.todo_manager import create_todo, update_todo_status
+권장 import:
+    # 새로운 방식 (권장)
+    from backend.app.dream_agent.models import TodoItem, Plan
+
+    # 기존 방식 (하위 호환성 유지, 점진적 deprecated 예정)
+    from backend.app.dream_agent.states import TodoItem, Plan
 """
 
-# Todo Models (Pydantic only)
-from .todo import (
+# =============================================================================
+# Re-export from models/ (하위 호환성)
+# =============================================================================
+
+# Todo Models (from models/)
+from ..models.todo import (
     TodoItem,
     TodoMetadata,
     TodoExecutionConfig,
@@ -20,8 +31,8 @@ from .todo import (
     TodoApproval,
 )
 
-# Plan Models
-from .plan import (
+# Plan Models (from models/)
+from ..models.plan import (
     Plan,
     PlanVersion,
     PlanChange,
@@ -30,8 +41,8 @@ from .plan import (
     create_plan_version,
 )
 
-# Resource Models
-from .resource import (
+# Resource Models (from models/)
+from ..models.resource import (
     AgentResource,
     ResourceAllocation,
     ResourceConstraints,
@@ -41,8 +52,8 @@ from .resource import (
     create_resource_constraints,
 )
 
-# Execution Graph Models
-from .execution_graph import (
+# Execution Graph Models (from models/)
+from ..models.execution_graph import (
     ExecutionNode,
     ExecutionGroup,
     ExecutionGraph,
@@ -51,16 +62,20 @@ from .execution_graph import (
     create_execution_graph,
 )
 
+# Results (from models/)
+from ..models.results import IntentResult, PlanResult, MLResult, BizResult, FinalResponse
+
+# =============================================================================
+# LangGraph State (states/ 고유)
+# =============================================================================
+
 # Base State
 from .base import AgentState, create_initial_state
-
-# Results
-from .results import IntentResult, PlanResult, MLResult, BizResult, FinalResponse
 
 # Reducers
 from .reducers import todo_reducer, ml_result_reducer, biz_result_reducer
 
-# State Accessors (P0-3.1)
+# State Accessors
 from .accessors import (
     # 기본 Accessors
     get_todos,
@@ -106,6 +121,9 @@ from .accessors import (
 )
 
 __all__ = [
+    # =============================================================================
+    # Re-exported from models/ (하위 호환성)
+    # =============================================================================
     # Todo Models
     "TodoItem",
     "TodoMetadata",
@@ -139,20 +157,23 @@ __all__ = [
     "create_execution_node",
     "create_execution_group",
     "create_execution_graph",
-    # Base State
-    "AgentState",
-    "create_initial_state",
     # Results
     "IntentResult",
     "PlanResult",
     "MLResult",
     "BizResult",
     "FinalResponse",
+    # =============================================================================
+    # LangGraph State (states/ 고유)
+    # =============================================================================
+    # Base State
+    "AgentState",
+    "create_initial_state",
     # Reducers
     "todo_reducer",
     "ml_result_reducer",
     "biz_result_reducer",
-    # State Accessors (P0-3.1)
+    # State Accessors
     "get_todos",
     "get_user_input",
     "get_intent",

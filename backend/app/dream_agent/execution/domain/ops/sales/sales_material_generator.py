@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 
 
 async def generate_sales_material(todo: TodoItem, log: Any) -> Dict[str, Any]:

@@ -17,8 +17,8 @@ import json
 import re
 import logging
 
-from ...states.plan import Plan
-from ...states.todo import TodoItem
+from ...models.plan import Plan
+from ...models.todo import TodoItem
 from .plan_editor import PlanEditor, PlanEdit, EditOperation, get_plan_editor
 
 logger = logging.getLogger(__name__)

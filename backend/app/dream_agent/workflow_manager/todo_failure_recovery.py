@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 if TYPE_CHECKING:
-    from ..states.todo import TodoItem
+    from ..models.todo import TodoItem
 
 logger = logging.getLogger(__name__)
 

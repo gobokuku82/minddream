@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 from backend.app.dream_agent.biz_execution.ad_creative.ad_creative_agent_tool import AdCreativeAgentTool
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 
 
 async def generate_ad_creative(todo: TodoItem, log: Any) -> Dict[str, Any]:

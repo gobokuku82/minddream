@@ -13,15 +13,15 @@ from backend.app.dream_agent.cognitive.intent_types import (
     SubIntent,
     get_tools_for_intent
 )
-from backend.app.dream_agent.states.todo import (
+from backend.app.dream_agent.models.todo import (
     TodoItem,
     TodoMetadata,
     TodoExecutionConfig,
     TodoDataConfig,
     TodoDependencyConfig,
     TodoApproval,
-    create_todo
 )
+from backend.app.dream_agent.workflow_manager.todo_manager import create_todo
 from backend.app.dream_agent.planning.tool_catalog import (
     get_catalog,
     ToolCatalogLoader,

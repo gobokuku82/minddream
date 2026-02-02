@@ -18,7 +18,7 @@ from backend.app.dream_agent.biz_execution.base_tool import (
     ValidationResult
 )
 from backend.app.dream_agent.biz_execution.tool_registry import register_tool
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 
 
 # ============================================================

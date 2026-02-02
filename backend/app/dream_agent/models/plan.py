@@ -1,4 +1,11 @@
-"""Plan State - 계획 관리 및 버전 관리"""
+"""Plan Models - 계획 관리 및 버전 관리 모델
+
+이 파일은 states/plan.py에서 models/로 이동됨.
+Pydantic 모델만 포함하며, workflow_manager 의존성 제거.
+
+NOTE: get_ready_todos()는 단순히 pending 상태만 반환.
+      의존성 기반 필터링은 workflow_manager.todo_manager에서 처리.
+"""
 
 from typing import List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, Field
@@ -168,7 +175,7 @@ class Plan(BaseModel):
         self.updated_at = datetime.now()
 
     # ============================================================
-    # Todo Accessor Methods (P0-1.1)
+    # Todo Accessor Methods
     # ============================================================
 
     def get_todos(self) -> List[TodoItem]:
@@ -188,12 +195,12 @@ class Plan(BaseModel):
 
     def get_ready_todos(self) -> List[TodoItem]:
         """
-        실행 가능한 todos 반환 (의존성 충족 + pending)
+        실행 가능한 todos 반환 (pending 상태)
 
-        TodoDependencyManager를 사용하여 의존성 기반 필터링
+        NOTE: 의존성 기반 필터링은 workflow_manager.todo_manager.TodoDependencyManager에서 처리.
+              이 메서드는 단순히 pending 상태만 반환합니다.
         """
-        from ..workflow_manager.todo_manager import TodoDependencyManager
-        return TodoDependencyManager.get_ready_todos(self.todos)
+        return self.get_todos_by_status("pending")
 
     def get_completed_todos(self) -> List[TodoItem]:
         """완료된 todos"""

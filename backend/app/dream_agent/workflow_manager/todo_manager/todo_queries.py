@@ -1,7 +1,7 @@
 """Todo Queries - Todo 조회 헬퍼 함수들"""
 
 from typing import List, Optional
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 
 
 def get_pending_todos(todos: List[TodoItem], layer: Optional[str] = None) -> List[TodoItem]:

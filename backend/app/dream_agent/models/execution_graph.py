@@ -1,4 +1,8 @@
-"""Execution Graph - 실행 그래프 및 DAG 구조"""
+"""Execution Graph Models - 실행 그래프 및 DAG 구조 모델
+
+이 파일은 states/execution_graph.py에서 models/로 이동됨.
+Pydantic 모델만 포함.
+"""
 
 from typing import List, Dict, Any, Optional, Set
 from pydantic import BaseModel, Field

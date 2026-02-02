@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
 from backend.app.core.logging import get_logger
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 
 logger = get_logger(__name__)
 

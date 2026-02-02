@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Annotated, Optional, Any
 from typing_extensions import TypedDict
 
-from .todo import TodoItem
+from ..models.todo import TodoItem
+from ..models.plan import Plan
+from ..models.resource import ResourcePlan
+from ..models.execution_graph import ExecutionGraph
 from .reducers import todo_reducer, ml_result_reducer, biz_result_reducer
-from .plan import Plan
-from .resource import ResourcePlan
-from .execution_graph import ExecutionGraph
 
 
 class AgentState(TypedDict, total=False):

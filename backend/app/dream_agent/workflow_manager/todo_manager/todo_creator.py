@@ -1,7 +1,7 @@
 """Todo Creator - Todo 생성 로직"""
 
 from typing import Literal, Optional, List, Dict, Any
-from backend.app.dream_agent.states.todo import (
+from backend.app.dream_agent.models.todo import (
     TodoItem,
     TodoMetadata
 )

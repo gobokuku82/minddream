@@ -3,12 +3,12 @@
 from typing import List, Dict, Set, Optional, Tuple, Any
 from collections import defaultdict, deque
 from backend.app.core.logging import get_logger
-from backend.app.dream_agent.states import TodoItem
-from backend.app.dream_agent.states.execution_graph import (
+from backend.app.dream_agent.models import TodoItem
+from backend.app.dream_agent.models.execution_graph import (
     ExecutionNode, ExecutionGroup, ExecutionGraph,
     create_execution_node, create_execution_group, create_execution_graph
 )
-from backend.app.dream_agent.states.resource import ResourcePlan
+from backend.app.dream_agent.models.resource import ResourcePlan
 
 logger = get_logger(__name__)
 

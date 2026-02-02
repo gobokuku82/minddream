@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from backend.app.core.logging import get_logger
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 from .todo_updater import update_todo_status
 
 logger = get_logger(__name__)

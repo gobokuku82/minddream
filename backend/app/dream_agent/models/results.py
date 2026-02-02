@@ -1,4 +1,8 @@
-"""Results - 레이어별 결과 모델"""
+"""Result Models - 레이어별 결과 모델
+
+이 파일은 states/results.py에서 models/로 이동됨.
+Pydantic 모델만 포함.
+"""
 
 from typing import Optional, Any
 from pydantic import BaseModel, Field

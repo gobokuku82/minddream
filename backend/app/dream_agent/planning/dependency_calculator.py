@@ -6,7 +6,7 @@ Todo 간의 의존성을 자동으로 계산하고 실행 순서를 결정합니
 from typing import List, Dict, Set, Optional, Any, Tuple
 from collections import defaultdict
 
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 from backend.app.dream_agent.planning.tool_catalog import (
     get_catalog,
     ToolCatalogLoader,

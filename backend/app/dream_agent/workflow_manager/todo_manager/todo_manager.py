@@ -8,7 +8,7 @@ P0-4.3: BaseManager 상속 및 Instance Method 리팩토링
 
 from typing import List, Set, Dict, Tuple, Optional
 from backend.app.core.logging import get_logger
-from backend.app.dream_agent.states.todo import TodoItem
+from backend.app.dream_agent.models.todo import TodoItem
 from backend.app.dream_agent.workflow_manager.base_manager import (
     BaseManager,
     ManagerStatus,
