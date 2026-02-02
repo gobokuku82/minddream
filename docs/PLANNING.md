@@ -1,5 +1,11 @@
 # Dream Agent 기획서
 
+> **문서 상태 범례**
+> - ✅ 구현 완료
+> - ⚠️ 부분 구현 / 검토 필요
+> - ❌ 미구현
+> - 🔧 사용자 결정 필요
+
 ## 1. 프로젝트 개요
 
 ### 1.1 프로젝트명
@@ -14,9 +20,11 @@
 - **확장 가능한 도구 시스템**: YAML 기반 도구 정의로 쉬운 확장
 - **실시간 피드백**: WebSocket 기반 진행 상황 실시간 표시
 
-## 2. 대상 사용자
+---
 
-### 2.1 주요 타겟
+## 2. 대상 사용자 🔧
+
+### 2.1 주요 타겟 (확정 필요)
 - 마케팅 담당자
 - 데이터 분석가
 - 콘텐츠 제작자
@@ -24,176 +32,214 @@
 
 ### 2.2 사용 시나리오
 
-| 시나리오 | 입력 예시 | 기대 출력 |
-|----------|-----------|-----------|
-| 감성 분석 | "최근 리뷰 감성 분석해줘" | 감성 분포, 주요 키워드, 인사이트 |
-| 트렌드 분석 | "요즘 뜨는 키워드 알려줘" | 트렌드 키워드, 해시태그 추천 |
-| 콘텐츠 생성 | "광고 스토리보드 만들어줘" | 광고 컨셉, 스토리보드, 영상 기획 |
-| 운영 대시보드 | "이번 달 매출 현황" | 매출 차트, KPI 요약, 인사이트 |
+| 시나리오 | 입력 예시 | 기대 출력 | 구현 상태 |
+|----------|-----------|-----------|-----------|
+| 감성 분석 | "최근 리뷰 감성 분석해줘" | 감성 분포, 주요 키워드 | ✅ |
+| 트렌드 분석 | "요즘 뜨는 키워드 알려줘" | 트렌드 키워드, 해시태그 | ✅ |
+| 콘텐츠 생성 | "광고 스토리보드 만들어줘" | 광고 컨셉, 스토리보드 | ⚠️ Agent 미구현 |
+| 운영 대시보드 | "이번 달 매출 현황" | 매출 차트, KPI 요약 | ⚠️ Agent 미구현 |
+
+---
 
 ## 3. 기능 명세
 
-### 3.1 Phase 1: 핵심 기능
+### 3.1 Cognitive Layer (인지)
 
-#### 3.1.1 Cognitive Layer (인지)
-- [x] 사용자 입력 분석
-- [x] Intent 추출 (분석/콘텐츠/운영/질문)
-- [x] 엔티티 인식 (날짜, 키워드, 플랫폼 등)
-- [x] 모호한 입력 처리 (명확화 요청)
-
-#### 3.1.2 Planning Layer (계획)
-- [x] 실행 계획 생성
-- [x] Todo 리스트 생성
-- [x] 도구 자동 선택
-- [x] 의존성 기반 순서 결정
-- [ ] 사용자 승인 워크플로우
-
-#### 3.1.3 Execution Layer (실행)
-- [x] Supervisor 기반 조율
-- [x] Domain Agent 실행
-- [ ] 병렬 실행 지원
-- [ ] 실패 복구 메커니즘
-- [x] Mock 실행 모드
-
-#### 3.1.4 Response Layer (응답)
-- [x] 결과 종합
-- [x] 자연어 응답 생성
-- [ ] 다국어 지원 (ko, en, ja, zh)
-- [ ] 첨부 파일 생성
-
-### 3.2 Phase 2: 도구 시스템
-
-#### 3.2.1 데이터 수집
-| 도구 | 설명 | 상태 |
+| 기능 | 설명 | 상태 |
 |------|------|------|
-| collector | 데이터 수집기 | ✅ 완료 |
-| preprocessor | 데이터 전처리기 | ✅ 완료 |
-| google_trends | Google Trends 연동 | ✅ 완료 |
+| 사용자 입력 분석 | 입력 텍스트 파싱 | ✅ |
+| Intent 추출 | IntentDomain + IntentCategory | ✅ |
+| 엔티티 인식 | 날짜, 키워드, 플랫폼 등 | ✅ |
+| 모호한 입력 처리 | 명확화 요청 메시지 생성 | ✅ |
+| 언어 감지 | ko, en, ja, zh | ✅ |
+| 대화 관리 | DialogueManager | ✅ |
 
-#### 3.2.2 분석
-| 도구 | 설명 | 상태 |
+### 3.2 Planning Layer (계획)
+
+| 기능 | 설명 | 상태 |
 |------|------|------|
-| sentiment_analyzer | 감성 분석 | ✅ 완료 |
-| keyword_analyzer | 키워드 분석 | ✅ 완료 |
-| absa_analyzer | 속성 기반 감성 분석 | ✅ 완료 |
-| problem_classifier | 문제 분류 | ✅ 완료 |
-| hashtag_analyzer | 해시태그 분석 | ✅ 완료 |
-| competitor_analyzer | 경쟁사 분석 | ✅ 완료 |
+| 실행 계획 생성 | Plan 객체 생성 | ✅ |
+| Todo 리스트 생성 | TodoItem 목록 | ✅ |
+| 도구 자동 선택 | ToolDiscovery 연동 | ✅ |
+| 의존성 기반 순서 | 위상 정렬 | ✅ |
+| 사용자 승인 워크플로우 | ApprovalManager | ⚠️ 구조만 존재 |
+| 재계획 (Replan) | ReplanManager | ⚠️ 구조만 존재 |
 
-#### 3.2.3 인사이트
-| 도구 | 설명 | 상태 |
+### 3.3 Execution Layer (실행)
+
+| 기능 | 설명 | 상태 |
 |------|------|------|
-| insight_generator | 인사이트 생성 | ✅ 완료 |
-| insight_with_trends | 트렌드 포함 인사이트 | ✅ 완료 |
+| Supervisor 기반 조율 | ExecutorRegistry | ✅ |
+| Domain Agent 실행 | BaseDomainAgent | ✅ |
+| ML 실행 (ml_execution) | 분석 도구 실행 | ✅ |
+| Biz 실행 (biz_execution) | 비즈니스 도구 실행 | ⚠️ 일부 |
+| 병렬 실행 | concurrent execution | ❌ |
+| 실패 복구 | retry 메커니즘 | ⚠️ 설정만 |
+| Mock 실행 모드 | mock_provider | ✅ |
+| 캐싱 | ExecutionCache | ✅ |
 
-#### 3.2.4 콘텐츠
-| 도구 | 설명 | 상태 |
+### 3.4 Response Layer (응답)
+
+| 기능 | 설명 | 상태 |
 |------|------|------|
-| ad_creative_agent | 광고 크리에이티브 | ✅ 완료 |
-| storyboard_agent | 스토리보드 생성 | ✅ 완료 |
-| video_agent | 영상 기획 | ✅ 완료 |
+| 결과 종합 | ExecutionResult 합성 | ✅ |
+| 자연어 응답 생성 | LLM 기반 응답 | ✅ |
+| 다국어 지원 | ko, en, ja, zh | ⚠️ ko만 테스트 |
+| 첨부 파일 생성 | attachments | ❌ |
+| 다음 액션 제안 | next_actions | ⚠️ 구조만 |
 
-#### 3.2.5 운영
-| 도구 | 설명 | 상태 |
-|------|------|------|
-| dashboard_agent | 대시보드 생성 | ✅ 완료 |
-| sales_agent | 매출 분석 | ✅ 완료 |
-| inventory_agent | 재고 관리 | ✅ 완료 |
+### 3.5 Tool System
 
-### 3.3 Phase 3: 인프라
+| Phase | 기능 | 상태 |
+|-------|------|------|
+| Phase 0 | YAML Tool Discovery | ✅ |
+| Phase 1 | ToolSpec ↔ BaseTool 호환 | ✅ |
+| Phase 2 | Hot Reload | ✅ |
+| Phase 2 | BaseDomainAgent | ✅ |
+| Phase 3 | ToolValidator | ✅ |
+| Phase 3 | Layer Schema 검증 | ✅ |
 
-#### 3.3.1 Tool System
-- [x] YAML 기반 Tool Discovery
-- [x] ToolSpec ↔ BaseTool 호환 레이어
-- [x] Hot Reload (파일 변경 감지)
-- [x] ToolValidator (스키마 검증)
+---
 
-#### 3.3.2 Dashboard
-- [x] 3-Panel Layout (Progress | Todo | Chat)
-- [x] WebSocket 실시간 통신
-- [ ] 반응형 디자인
-- [ ] 다크 모드
+## 4. 도구 현황
 
-## 4. 기술 요구사항
+### 4.1 데이터 수집 (Collection)
 
-### 4.1 성능 요구사항
-| 항목 | 목표 |
-|------|------|
-| 응답 시간 (단순 질문) | < 2초 |
-| 응답 시간 (분석 작업) | < 30초 |
-| 동시 세션 | 100+ |
-| 가용성 | 99.9% |
+| 도구 | YAML | Agent | 상태 |
+|------|------|-------|------|
+| review_collector | ✅ | ✅ collector_agent.py | ✅ |
+| preprocessor | ✅ | ✅ preprocessor_agent.py | ✅ |
+| google_trends | ✅ | ✅ google_trends_agent.py | ✅ |
 
-### 4.2 확장성 요구사항
-- 새 도구 추가: YAML 파일 추가만으로 가능
-- 새 Domain Agent 추가: BaseDomainAgent 상속
-- 수평 확장: 독립적인 워커 프로세스
+### 4.2 분석 (Analysis)
 
-### 4.3 보안 요구사항
-- API 인증 (JWT/OAuth)
-- 사용자별 세션 격리
-- 민감 데이터 암호화
-- Rate Limiting
+| 도구 | YAML | Agent | 상태 |
+|------|------|-------|------|
+| sentiment_analyzer | ✅ | ✅ sentiment_analyzer_agent.py | ✅ |
+| keyword_extractor | ✅ | ✅ keyword_extractor_agent.py | ✅ |
+| absa_analyzer | ✅ | ⚠️ | ⚠️ YAML만 |
+| problem_classifier | ✅ | ✅ problem_classifier_agent.py | ✅ |
+| hashtag_analyzer | ✅ | ✅ hashtag_analyzer_agent.py | ✅ |
+| competitor_analyzer | ✅ | ✅ competitor_analyzer_agent.py | ✅ |
+
+### 4.3 인사이트 (Insight)
+
+| 도구 | YAML | Agent | 상태 |
+|------|------|-------|------|
+| insight_generator | ✅ | ✅ insight_generator_agent.py | ✅ |
+| insight_with_trends | ✅ | ⚠️ | ⚠️ YAML만 |
+
+### 4.4 콘텐츠 (Content)
+
+| 도구 | YAML | Agent | 상태 |
+|------|------|-------|------|
+| ad_creative_agent | ✅ | ❌ | ⚠️ YAML만 |
+| storyboard_agent | ✅ | ❌ | ⚠️ YAML만 |
+| video_agent | ✅ | ✅ video_agent_graph.py | ✅ |
+| report_generator | ✅ | ✅ report_agent_graph.py | ✅ |
+
+### 4.5 운영 (Ops)
+
+| 도구 | YAML | Agent | 상태 |
+|------|------|-------|------|
+| dashboard_agent | ✅ | ❌ | ⚠️ YAML만 |
+| sales_agent | ✅ | ❌ | ⚠️ YAML만 |
+| inventory_agent | ✅ | ❌ | ⚠️ YAML만 |
+
+---
 
 ## 5. 마일스톤
 
-### 5.1 Phase 0.5 (완료)
+### 5.1 Phase 0.5 ✅ (완료)
 - ✅ 프로젝트 구조 설정
 - ✅ 기본 모델/스키마 정의
-- ✅ 4-Layer 스켈레톤
+- ✅ 5-Layer 스켈레톤
 
-### 5.2 Phase 1 (완료)
+### 5.2 Phase 1 ✅ (완료)
 - ✅ YAML Tool Discovery
-- ✅ 14개 도구 정의
+- ✅ 18개 도구 YAML 정의
 - ✅ ToolSpec ↔ BaseTool 호환
 
-### 5.3 Phase 2 (완료)
+### 5.3 Phase 2 ✅ (완료)
 - ✅ Hot Reload 시스템
 - ✅ BaseDomainAgent 표준화
 - ✅ Tool I/O 스키마
 
-### 5.4 Phase 3 (완료)
+### 5.4 Phase 3 ✅ (완료)
 - ✅ ToolValidator
 - ✅ Layer Schema 검증
-- ✅ E2E 테스트
+- ✅ E2E 테스트 구조
 
-### 5.5 Phase 4 (예정)
-- [ ] 병렬 실행 지원
-- [ ] 실패 복구 메커니즘
-- [ ] 다국어 지원
+### 5.5 Phase 4 ❌ (예정)
+- ❌ 누락된 Domain Agent 구현 (ad_creative, storyboard, dashboard, sales, inventory)
+- ❌ 병렬 실행 지원
+- ❌ 실패 복구 메커니즘
+- ❌ 다국어 실제 테스트
 
-### 5.6 Phase 5 (예정)
-- [ ] 운영 환경 배포
-- [ ] 모니터링/로깅
-- [ ] CI/CD 파이프라인
+### 5.6 Phase 5 ❌ (예정)
+- ❌ 운영 환경 배포
+- ❌ 모니터링/로깅 (Prometheus, Grafana)
+- ❌ CI/CD 파이프라인
+- ❌ 문서화 완성
 
-## 6. 제약 사항
+---
 
-### 6.1 기술적 제약
-- Python 3.10+
-- LangGraph 0.2+
-- Pydantic v2
-- OpenAI API 의존
+## 6. 기술 요구사항
 
-### 6.2 비즈니스 제약
-- LLM API 비용 관리
-- 데이터 보존 정책 준수
-- GDPR/개인정보보호법 준수
+### 6.1 성능 요구사항 🔧
+
+| 항목 | 목표 | 현재 | 상태 |
+|------|------|------|------|
+| 응답 시간 (단순 질문) | < 2초 | 미측정 | 🔧 |
+| 응답 시간 (분석 작업) | < 30초 | 미측정 | 🔧 |
+| 동시 세션 | 100+ | 미측정 | 🔧 |
+| 가용성 | 99.9% | N/A | 🔧 |
+
+### 6.2 확장성 요구사항 ✅
+
+- ✅ 새 도구 추가: YAML 파일 추가 + Hot Reload
+- ✅ 새 Domain Agent: BaseDomainAgent 상속
+- ⚠️ 수평 확장: 미구현
+
+### 6.3 보안 요구사항 🔧
+
+| 항목 | 상태 |
+|------|------|
+| API 인증 (JWT/OAuth) | 🔧 미구현 |
+| 사용자별 세션 격리 | ⚠️ 부분 |
+| 민감 데이터 암호화 | 🔧 미구현 |
+| Rate Limiting | 🔧 미구현 |
+
+---
 
 ## 7. 리스크 관리
 
-| 리스크 | 영향 | 대응 방안 |
-|--------|------|-----------|
-| LLM 응답 지연 | 사용자 경험 저하 | 캐싱, 스트리밍 응답 |
-| 도구 실행 실패 | 작업 미완료 | 재시도, 대체 도구 |
-| 스키마 불일치 | 런타임 에러 | Validator 검증 |
-| 순환 의존성 | 무한 루프 | 의존성 검증 |
+| 리스크 | 영향 | 대응 방안 | 상태 |
+|--------|------|-----------|------|
+| LLM 응답 지연 | 사용자 경험 저하 | 캐싱, 스트리밍 응답 | ⚠️ |
+| 도구 실행 실패 | 작업 미완료 | 재시도, 대체 도구 | ⚠️ 설정만 |
+| 스키마 불일치 | 런타임 에러 | Validator 검증 | ✅ |
+| 순환 의존성 | 무한 루프 | 의존성 검증 | ✅ |
 
-## 8. 성공 지표
+---
 
-| 지표 | 목표 |
-|------|------|
-| 작업 완료율 | > 95% |
-| 평균 응답 시간 | < 5초 |
-| 사용자 만족도 | > 4.0/5.0 |
-| 도구 재사용률 | > 70% |
+## 🔧 사용자 결정 필요 사항
+
+### 우선순위 결정
+
+| 항목 | 설명 | 옵션 |
+|------|------|------|
+| Phase 4 우선순위 | 어떤 기능 먼저? | Agent 구현 / 병렬 실행 / 다국어 |
+| 누락 Agent | 구현 순서 | ad_creative → storyboard → video / ops 먼저 |
+| 인증 시스템 | 적용 여부 | JWT / OAuth / 없음 |
+| 모니터링 | 도구 선택 | Prometheus / CloudWatch / 자체 구현 |
+| 배포 환경 | 인프라 | AWS / GCP / On-premise |
+
+### 기술 결정
+
+| 항목 | 현재 | 옵션 |
+|------|------|------|
+| 세션 저장소 | In-memory | Redis / PostgreSQL |
+| 메시지 큐 | 없음 | Redis Pub/Sub / RabbitMQ / Kafka |
+| 캐싱 | 로컬 | Redis / Memcached |
+| 로깅 | Python logging | ELK / CloudWatch Logs |

@@ -1,11 +1,17 @@
 # Dream Agent 시스템 아키텍처
 
+> **문서 상태 범례**
+> - ✅ 구현 완료
+> - ⚠️ 부분 구현 / 검토 필요
+> - ❌ 미구현
+> - 🔧 사용자 결정 필요
+
 ## 1. 개요
 
 Dream Agent는 4-Layer Hand-off 아키텍처 기반의 AI 에이전트 시스템입니다.
 LangGraph StateGraph를 활용하여 각 레이어 간 상태 전이를 관리합니다.
 
-## 2. 시스템 구조
+## 2. 시스템 구조 ✅
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -27,15 +33,15 @@ LangGraph StateGraph를 활용하여 각 레이어 간 상태 전이를 관리�
 └───────────────┘      └───────────────┘      └───────────────┘
 ```
 
-## 3. 4-Layer Hand-off 아키텍처
+## 3. 5-Layer Hand-off 아키텍처 ✅
 
-### 3.1 레이어 구조
+### 3.1 레이어 구조 (실제 구현)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Cognitive Layer (인지)                       │
 │  - 사용자 입력 분석                                              │
-│  - Intent 추출                                                   │
+│  - Intent 추출 (IntentDomain + IntentCategory)                  │
 │  - 엔티티 인식                                                   │
 └────────────────────────────┬────────────────────────────────────┘
                              │ Intent, Entities
@@ -49,10 +55,14 @@ LangGraph StateGraph를 활용하여 각 레이어 간 상태 전이를 관리�
                              │ Plan, TodoItems
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Execution Layer (실행)                        │
-│  - Supervisor가 조율                                             │
-│  - Domain Agent 실행                                             │
-│  - 도구 호출                                                     │
+│                   ML Execution Layer (ML 실행)                   │
+│  - 감성 분석, 키워드 추출 등 ML 작업                             │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  Biz Execution Layer (비즈니스 실행)             │
+│  - 리포트 생성, 대시보드, 콘텐츠 생성                            │
 └────────────────────────────┬────────────────────────────────────┘
                              │ ExecutionResults
                              ▼
@@ -64,7 +74,17 @@ LangGraph StateGraph를 활용하여 각 레이어 간 상태 전이를 관리�
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 데이터 흐름
+### 3.2 레이어 목록 (TodoItem.layer 기준) ✅
+
+| 레이어 | 설명 | 상태 |
+|--------|------|------|
+| `cognitive` | 인지/의도 분석 | ✅ |
+| `planning` | 계획 수립 | ✅ |
+| `ml_execution` | ML 분석 실행 | ✅ |
+| `biz_execution` | 비즈니스 로직 실행 | ✅ |
+| `response` | 응답 생성 | ✅ |
+
+### 3.3 데이터 흐름 ✅
 
 ```
 User Input
@@ -81,8 +101,9 @@ CognitiveInput ──► Cognitive Layer ──► CognitiveOutput
                                             ▼
                    ExecutionInput ◄── Plan, TodoItems
                         │
-                        ▼
-                   Execution Layer ──► ExecutionOutput
+                        ├──► ML Execution ──► ExecutionOutput
+                        │
+                        └──► Biz Execution ──► ExecutionOutput
                                             │
                                             ▼
                    ResponseInput ◄── ExecutionResults
@@ -96,7 +117,9 @@ CognitiveInput ──► Cognitive Layer ──► CognitiveOutput
 
 ## 4. 핵심 컴포넌트
 
-### 4.1 LangGraph StateGraph
+### 4.1 LangGraph StateGraph ✅
+
+> 실제 위치: `orchestrator/builder.py` (graph/ 폴더 아님)
 
 ```python
 # 상태 그래프 정의
@@ -105,102 +128,121 @@ workflow = StateGraph(AgentState)
 # 노드 추가
 workflow.add_node("cognitive", cognitive_node)
 workflow.add_node("planning", planning_node)
-workflow.add_node("execution", execution_node)
+workflow.add_node("ml_execution", ml_execution_node)
+workflow.add_node("biz_execution", biz_execution_node)
 workflow.add_node("response", response_node)
-
-# 조건부 엣지
-workflow.add_conditional_edges(
-    "cognitive",
-    route_after_cognitive,
-    {"planning": "planning", "response": "response"}
-)
 ```
 
-### 4.2 Tool System (Phase 0-3)
+### 4.2 Tool System (Phase 0-3) ✅
 
-| Phase | 기능 | 파일 |
-|-------|------|------|
-| Phase 0 | YAML 기반 Tool Discovery | `tools/discovery.py`, `tools/loader.py` |
-| Phase 1 | ToolSpec ↔ BaseTool 호환 | `tools/compat.py` |
-| Phase 2 | Hot Reload, Domain Agent | `tools/hot_reload.py`, `execution/domain/` |
-| Phase 3 | Validator, Schema 검증 | `tools/validator.py` |
+| Phase | 기능 | 파일 | 상태 |
+|-------|------|------|------|
+| Phase 0 | YAML 기반 Tool Discovery | `tools/discovery.py`, `tools/loader.py` | ✅ |
+| Phase 1 | ToolSpec ↔ BaseTool 호환 | `tools/compat.py` | ✅ |
+| Phase 2 | Hot Reload, Domain Agent | `tools/hot_reload.py`, `execution/domain/` | ✅ |
+| Phase 3 | Validator, Schema 검증 | `tools/validator.py` | ✅ |
 
-### 4.3 Domain Agents
+### 4.3 Domain Agents ✅
 
 ```
 execution/domain/
-├── base_agent.py      # BaseDomainAgent 추상 클래스
-├── collection/        # 데이터 수집
-│   ├── collector.py
-│   └── preprocessor.py
-├── analysis/          # 분석
-│   ├── sentiment.py
-│   ├── keyword.py
-│   └── ...
-├── insight/           # 인사이트 생성
-├── content/           # 콘텐츠 생성
-├── report/            # 리포트
-└── ops/               # 운영 (dashboard, sales, inventory)
+├── base_agent.py           # ✅ BaseDomainAgent 추상 클래스
+├── collection/
+│   ├── collector/          # ✅ collector_agent.py
+│   └── preprocessor/       # ✅ preprocessor_agent.py
+├── analysis/
+│   ├── sentiment/          # ✅ sentiment_analyzer_agent.py
+│   ├── keyword/            # ✅ keyword_extractor_agent.py
+│   ├── hashtag/            # ✅ hashtag_analyzer_agent.py
+│   ├── classifier/         # ✅ problem_classifier_agent.py
+│   ├── competitor/         # ✅ competitor_analyzer_agent.py
+│   └── trends/             # ✅ google_trends_agent.py
+├── insight/
+│   └── insight_generator/  # ✅ insight_generator_agent.py
+├── content/
+│   ├── video/              # ✅ video_agent_graph.py
+│   └── ad_creative/        # ⚠️ __init__.py만 존재
+├── report/
+│   └── report_agent/       # ✅ report_agent_graph.py
+├── ops/
+│   └── inventory/          # ⚠️ __init__.py만 존재
+└── toolkit/                # ✅ 공용 유틸리티
 ```
 
-## 5. 디렉토리 구조
+## 5. 디렉토리 구조 (실제) ✅
 
 ```
 backend/
 ├── api/
-│   └── routes/
-│       └── agent.py           # API 라우트
+│   ├── routes/
+│   │   └── agent.py              # ✅ API 라우트
+│   └── schemas/                  # ✅ API 스키마
+│
 ├── app/
 │   └── dream_agent/
-│       ├── cognitive/         # Cognitive Layer
+│       ├── cognitive/            # ✅ Cognitive Layer
 │       │   ├── cognitive_node.py
-│       │   └── intent_parser.py
-│       ├── planning/          # Planning Layer
-│       │   ├── planning_node.py
-│       │   └── plan_generator.py
-│       ├── execution/         # Execution Layer
-│       │   ├── execution_node.py
-│       │   ├── supervisor.py
-│       │   └── domain/        # Domain Agents
-│       ├── response/          # Response Layer
+│       │   ├── intent_classifier.py
+│       │   ├── intent_types.py
+│       │   ├── language_detector.py
+│       │   └── dialogue_manager.py
+│       │
+│       ├── planning/             # ✅ Planning Layer
+│       │   ├── tool_catalog.py
+│       │   └── __init__.py
+│       │
+│       ├── execution/            # ✅ Execution Layer
+│       │   ├── domain/           # Domain Agents
+│       │   └── core/             # 실행 코어
+│       │
+│       ├── response/             # ✅ Response Layer
 │       │   └── response_node.py
-│       ├── graph/             # LangGraph 정의
-│       │   ├── builder.py
-│       │   ├── state.py
-│       │   └── transitions.py
-│       ├── tools/             # Tool System
+│       │
+│       ├── orchestrator/         # ✅ LangGraph 정의 (graph/ 아님)
+│       │   ├── builder.py        # StateGraph 빌더
+│       │   ├── router.py         # 라우팅 로직
+│       │   └── checkpointer.py   # 체크포인트
+│       │
+│       ├── tools/                # ✅ Tool System
 │       │   ├── discovery.py
 │       │   ├── loader.py
 │       │   ├── compat.py
 │       │   ├── hot_reload.py
 │       │   ├── validator.py
-│       │   └── definitions/   # YAML 정의
-│       ├── models/            # Pydantic 모델
-│       └── schemas/           # I/O 스키마
+│       │   ├── base_tool.py
+│       │   ├── tool_registry.py
+│       │   └── definitions/      # YAML 정의 (18개)
+│       │
+│       ├── models/               # ✅ Pydantic 모델
+│       ├── schemas/              # ✅ I/O 스키마
+│       ├── states/               # ✅ LangGraph 상태
+│       ├── llm_manager/          # ✅ LLM 클라이언트
+│       ├── callbacks/            # ✅ WebSocket 콜백
+│       └── workflow_manager/     # ✅ 워크플로우 관리
 │
 dashboard/
 ├── templates/
-│   └── index.html             # 3-Panel Layout
+│   └── index.html                # ✅ 3-Panel Layout
 ├── static/
-│   ├── js/app.js              # WebSocket Client
-│   └── css/style.css
-└── app.py                     # Flask 서버
+│   ├── js/app.js                 # ✅ WebSocket Client
+│   └── css/style.css             # ✅ 스타일
+└── app.py                        # ⚠️ Flask 서버 (확인 필요)
 ```
 
-## 6. 기술 스택
+## 6. 기술 스택 ✅
 
-| 영역 | 기술 |
-|------|------|
-| Backend Framework | FastAPI |
-| Workflow Engine | LangGraph (StateGraph) |
-| LLM | OpenAI GPT-4 |
-| Validation | Pydantic v2 |
-| Dashboard | Flask + WebSocket |
-| 실시간 통신 | WebSocket |
-| 설정 관리 | YAML |
-| 테스트 | pytest |
+| 영역 | 기술 | 상태 |
+|------|------|------|
+| Backend Framework | FastAPI | ✅ |
+| Workflow Engine | LangGraph (StateGraph) | ✅ |
+| LLM | OpenAI GPT-4 | ✅ |
+| Validation | Pydantic v2 | ✅ |
+| Dashboard | Flask + WebSocket | ⚠️ |
+| 실시간 통신 | WebSocket | ✅ |
+| 설정 관리 | YAML | ✅ |
+| 테스트 | pytest | ⚠️ 테스트 커버리지 확인 필요 |
 
-## 7. 확장 포인트
+## 7. 확장 포인트 ✅
 
 ### 7.1 새 도구 추가
 1. `tools/definitions/`에 YAML 파일 추가
@@ -209,10 +251,20 @@ dashboard/
 
 ### 7.2 새 Domain Agent 추가
 1. `BaseDomainAgent` 상속
-2. `@register_domain_agent` 데코레이터 적용
+2. `DomainAgentRegistry`에 등록
 3. `execute()` 메서드 구현
 
 ### 7.3 새 레이어 추가
 1. `schemas/`에 Input/Output 스키마 정의
-2. `graph/transitions.py`에 전이 로직 추가
-3. `graph/builder.py`에 노드 등록
+2. `orchestrator/router.py`에 전이 로직 추가
+3. `orchestrator/builder.py`에 노드 등록
+
+---
+
+## 🔧 사용자 결정 필요 사항
+
+| 항목 | 설명 | 옵션 |
+|------|------|------|
+| 세션 저장소 | 현재 In-memory (agent.py:13) | Redis / PostgreSQL / In-memory |
+| Dashboard 서버 | Flask vs FastAPI 통합 | 분리 유지 / FastAPI 통합 |
+| 테스트 전략 | 테스트 커버리지 목표 | 50% / 70% / 90% |

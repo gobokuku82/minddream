@@ -1,80 +1,109 @@
 # Tool Specification (도구 스펙 문서)
 
+> **문서 상태 범례**
+> - ✅ 구현 완료
+> - ⚠️ 부분 구현 / 검토 필요
+> - ❌ 미구현
+> - 🔧 사용자 결정 필요
+
 ## 1. 개요
 
 Dream Agent의 도구 시스템은 YAML 기반 선언적 정의를 사용합니다.
 이 문서는 도구 정의 형식, 검증 규칙, 확장 방법을 설명합니다.
 
-## 2. YAML 도구 정의 형식
+---
 
-### 2.1 기본 구조
+## 2. YAML 도구 정의 형식 ✅
+
+### 2.1 실제 사용 구조
+
+> 위치: `tools/definitions/*.yaml`
 
 ```yaml
-# tools/definitions/{tool_name}.yaml
-
 # === 필수 필드 ===
-name: tool_name              # 고유 식별자 (snake_case)
-version: "1.0.0"             # 시맨틱 버전
-layer: execution             # 실행 레이어
-domain: analysis             # 도메인 영역
-description: "도구 설명"      # 도구 설명
+name: sentiment_analyzer          # 고유 식별자 (snake_case)
+description: "리뷰 텍스트의 감성을 분석합니다"
+tool_type: analysis               # 도구 타입
+version: "1.0.0"                  # 시맨틱 버전
+layer: ml_execution               # 실행 레이어
 
-# === 스키마 정의 ===
-input_schema:                # 입력 JSON Schema
-  type: object
-  properties:
-    param1:
-      type: string
-      description: "파라미터 설명"
-  required: ["param1"]
+executor: ml_agent.sentiment      # 실행자 (executor 이름)
 
-output_schema:               # 출력 JSON Schema
-  type: object
-  properties:
-    result:
-      type: string
+# === 파라미터 정의 ===
+parameters:
+  - name: reviews
+    type: array
+    required: true
+    description: "분석할 리뷰 텍스트 목록"
+  - name: language
+    type: string
+    required: false
+    default: "ko"
+    description: "리뷰 언어 (ko, en, ja)"
 
-# === 선택 필드 ===
-dependencies: []             # 의존 도구 목록
-produces: []                 # 생성하는 데이터 유형
-tags: []                     # 검색용 태그
-config: {}                   # 추가 설정
+# === 실행 설정 ===
+timeout_sec: 120
+max_retries: 3
+
+# === 의존성 ===
+dependencies: []                  # 선행 도구 목록
+produces:                         # 생성하는 데이터
+  - sentiment_results
+  - sentiment_summary
+
+# === 메타데이터 ===
+tags:
+  - sentiment
+  - analysis
+  - nlp
+
+# === 예시 (선택) ===
+examples:
+  - input:
+      reviews: ["좋아요!", "별로예요"]
+    output:
+      sentiment_results:
+        - text: "좋아요!"
+          sentiment: positive
 ```
 
 ### 2.2 필드 설명
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `name` | string | ✅ | 고유 식별자. snake_case 형식 |
-| `version` | string | ✅ | 시맨틱 버전 (x.y.z) |
-| `layer` | string | ✅ | 실행 레이어 (collection, analysis, insight, content, report, ops) |
-| `domain` | string | ✅ | 도메인 (data, analysis, insight, content, business) |
+| `name` | string | ✅ | 고유 식별자 (snake_case) |
 | `description` | string | ✅ | 도구 설명 |
-| `input_schema` | object | ✅ | 입력 JSON Schema |
-| `output_schema` | object | ✅ | 출력 JSON Schema |
-| `dependencies` | array | ❌ | 의존하는 도구 이름 목록 |
-| `produces` | array | ❌ | 생성하는 데이터 유형 |
-| `tags` | array | ❌ | 검색/분류용 태그 |
-| `config` | object | ❌ | 도구별 추가 설정 |
+| `tool_type` | string | ✅ | 도구 타입 (analysis, content, ops 등) |
+| `version` | string | ✅ | 시맨틱 버전 (x.y.z) |
+| `layer` | string | ✅ | 실행 레이어 |
+| `executor` | string | ✅ | 실행자 이름 |
+| `parameters` | array | ✅ | 파라미터 정의 목록 |
+| `timeout_sec` | int | ❌ | 타임아웃 (초) |
+| `max_retries` | int | ❌ | 최대 재시도 횟수 |
+| `dependencies` | array | ❌ | 선행 도구 목록 |
+| `produces` | array | ❌ | 생성 데이터 타입 |
+| `tags` | array | ❌ | 검색용 태그 |
+| `examples` | array | ❌ | 사용 예시 |
 
-## 3. 레이어 정의
+---
 
-### 3.1 레이어 목록
+## 3. 레이어 정의 ✅
 
-| 레이어 | 설명 | 실행 순서 |
-|--------|------|-----------|
-| `collection` | 데이터 수집 | 1 |
-| `analysis` | 데이터 분석 | 2 |
-| `insight` | 인사이트 생성 | 3 |
-| `content` | 콘텐츠 생성 | 4 |
-| `report` | 리포트 생성 | 5 |
-| `ops` | 운영 작업 | 6 |
+### 3.1 레이어 목록 (실제 사용)
+
+| 레이어 | 설명 | executor 패턴 |
+|--------|------|---------------|
+| `ml_execution` | ML 분석 작업 | `ml_agent.*` |
+| `biz_execution` | 비즈니스 로직 | `biz_agent.*` |
+| `collection` | 데이터 수집 | `collector.*` |
 
 ### 3.2 레이어 → Executor 매핑
 
 ```python
 LAYER_TO_EXECUTOR = {
     "collection": "collection_executor",
+    "ml_execution": "ml_executor",
+    "biz_execution": "biz_executor",
     "analysis": "analysis_executor",
     "insight": "insight_executor",
     "content": "content_executor",
@@ -83,318 +112,201 @@ LAYER_TO_EXECUTOR = {
 }
 ```
 
-## 4. 도메인 정의
+---
 
-| 도메인 | 설명 | 예시 도구 |
-|--------|------|-----------|
-| `data` | 데이터 수집/처리 | collector, preprocessor |
-| `analysis` | 분석 | sentiment, keyword, absa |
-| `insight` | 인사이트 도출 | insight_generator |
-| `content` | 콘텐츠 생성 | ad_creative, storyboard |
-| `business` | 비즈니스 운영 | dashboard, sales, inventory |
+## 4. 현재 정의된 도구 (18개) ✅
 
-## 5. 현재 정의된 도구
+### 4.1 Collection Layer
 
-### 5.1 Collection Layer
+| 도구 | 파일 | 설명 | 상태 |
+|------|------|------|------|
+| `review_collector` | review_collector.yaml | 리뷰 데이터 수집 | ✅ |
+| `preprocessor` | preprocessor.yaml | 데이터 전처리 | ✅ |
+| `google_trends` | google_trends.yaml | Google Trends 수집 | ✅ |
 
-#### preprocessor
-```yaml
-name: preprocessor
-version: "1.0.0"
-layer: collection
-domain: data
-description: "수집된 데이터를 분석 가능한 형태로 전처리"
-dependencies: ["collector"]
-produces: ["preprocessed_data"]
-```
+### 4.2 Analysis Layer (ML Execution)
 
-#### google_trends
-```yaml
-name: google_trends
-version: "1.0.0"
-layer: collection
-domain: data
-description: "Google Trends 데이터 수집"
-dependencies: []
-produces: ["trend_data"]
-```
+| 도구 | 파일 | 설명 | 상태 |
+|------|------|------|------|
+| `sentiment_analyzer` | sentiment_analyzer.yaml | 감성 분석 | ✅ |
+| `keyword_extractor` | keyword_extractor.yaml | 키워드 추출 | ✅ |
+| `absa_analyzer` | absa_analyzer.yaml | 속성 기반 감성 분석 | ✅ |
+| `problem_classifier` | problem_classifier.yaml | 문제 분류 | ✅ |
+| `hashtag_analyzer` | hashtag_analyzer.yaml | 해시태그 분석 | ✅ |
+| `competitor_analyzer` | competitor_analyzer.yaml | 경쟁사 분석 | ✅ |
 
-### 5.2 Analysis Layer
+### 4.3 Insight Layer
 
-#### sentiment_analyzer
-```yaml
-name: sentiment_analyzer
-version: "1.0.0"
-layer: analysis
-domain: analysis
-description: "텍스트 감성 분석"
-dependencies: ["preprocessor"]
-produces: ["sentiment_result"]
-```
+| 도구 | 파일 | 설명 | 상태 |
+|------|------|------|------|
+| `insight_generator` | insight_generator.yaml | 인사이트 생성 | ✅ |
+| `insight_with_trends` | insight_with_trends.yaml | 트렌드 포함 인사이트 | ✅ |
 
-#### keyword_analyzer
-```yaml
-name: keyword_analyzer
-version: "1.0.0"
-layer: analysis
-domain: analysis
-description: "키워드 추출 및 분석"
-dependencies: ["preprocessor"]
-produces: ["keyword_result"]
-```
+### 4.4 Content Layer (Biz Execution)
 
-#### absa_analyzer
-```yaml
-name: absa_analyzer
-version: "1.0.0"
-layer: analysis
-domain: analysis
-description: "속성 기반 감성 분석 (Aspect-Based Sentiment Analysis)"
-dependencies: ["preprocessor"]
-produces: ["absa_result"]
-```
+| 도구 | 파일 | 설명 | 상태 |
+|------|------|------|------|
+| `ad_creative_agent` | ad_creative_agent.yaml | 광고 크리에이티브 | ✅ YAML정의 |
+| `storyboard_agent` | storyboard_agent.yaml | 스토리보드 생성 | ✅ YAML정의 |
+| `video_agent` | video_agent.yaml | 영상 기획/생성 | ✅ |
+| `report_generator` | report_generator.yaml | 리포트 생성 | ✅ |
 
-#### problem_classifier
-```yaml
-name: problem_classifier
-version: "1.0.0"
-layer: analysis
-domain: analysis
-description: "문제/이슈 분류"
-dependencies: ["preprocessor"]
-produces: ["problem_classification"]
-```
+### 4.5 Ops Layer
 
-#### hashtag_analyzer
-```yaml
-name: hashtag_analyzer
-version: "1.0.0"
-layer: analysis
-domain: analysis
-description: "해시태그 분석 및 추천"
-dependencies: ["keyword_analyzer"]
-produces: ["hashtag_result"]
-```
+| 도구 | 파일 | 설명 | 상태 |
+|------|------|------|------|
+| `dashboard_agent` | dashboard_agent.yaml | 대시보드 생성 | ✅ YAML정의 |
+| `sales_agent` | sales_agent.yaml | 매출 분석 | ✅ YAML정의 |
+| `inventory_agent` | inventory_agent.yaml | 재고 관리 | ✅ YAML정의 |
 
-#### competitor_analyzer
-```yaml
-name: competitor_analyzer
-version: "1.0.0"
-layer: analysis
-domain: analysis
-description: "경쟁사 분석"
-dependencies: ["preprocessor"]
-produces: ["competitor_result"]
-```
+---
 
-### 5.3 Insight Layer
-
-#### insight_generator
-```yaml
-name: insight_generator
-version: "1.0.0"
-layer: insight
-domain: insight
-description: "분석 결과 기반 인사이트 생성"
-dependencies: ["sentiment_analyzer", "keyword_analyzer"]
-produces: ["insights"]
-```
-
-#### insight_with_trends
-```yaml
-name: insight_with_trends
-version: "1.0.0"
-layer: insight
-domain: insight
-description: "트렌드 데이터 포함 인사이트 생성"
-dependencies: ["insight_generator", "google_trends"]
-produces: ["insights_with_trends"]
-```
-
-### 5.4 Content Layer
-
-#### ad_creative_agent
-```yaml
-name: ad_creative_agent
-version: "1.0.0"
-layer: content
-domain: content
-description: "광고 크리에이티브 생성"
-dependencies: ["insight_generator"]
-produces: ["ad_creative"]
-```
-
-#### storyboard_agent
-```yaml
-name: storyboard_agent
-version: "1.0.0"
-layer: content
-domain: content
-description: "스토리보드 생성"
-dependencies: ["ad_creative_agent"]
-produces: ["storyboard"]
-```
-
-#### video_agent
-```yaml
-name: video_agent
-version: "1.0.0"
-layer: content
-domain: content
-description: "영상 기획/생성"
-dependencies: ["storyboard_agent"]
-produces: ["video_plan"]
-```
-
-### 5.5 Ops Layer
-
-#### dashboard_agent
-```yaml
-name: dashboard_agent
-version: "1.0.0"
-layer: ops
-domain: business
-description: "대시보드 생성"
-dependencies: []
-produces: ["dashboard"]
-```
-
-#### sales_agent
-```yaml
-name: sales_agent
-version: "1.0.0"
-layer: ops
-domain: business
-description: "매출 분석"
-dependencies: []
-produces: ["sales_analysis"]
-```
-
-#### inventory_agent
-```yaml
-name: inventory_agent
-version: "1.0.0"
-layer: ops
-domain: business
-description: "재고 관리"
-dependencies: []
-produces: ["inventory_status"]
-```
-
-## 6. 의존성 그래프
+## 5. 의존성 그래프 ✅
 
 ```
-collector
+review_collector
     │
     ▼
-preprocessor
-    │
-    ├──────────────────────────────────────┐
-    ▼                                      ▼
-sentiment_analyzer                   keyword_analyzer
-    │                                      │
-    │                                      ├───► hashtag_analyzer
-    │                                      │
-    ├──────────────┬───────────────────────┤
-    ▼              ▼                       ▼
-insight_generator ◄────────────────────────┘
-    │
-    ├───► insight_with_trends ◄── google_trends
-    │
-    ▼
-ad_creative_agent
-    │
-    ▼
-storyboard_agent
-    │
-    ▼
-video_agent
+preprocessor ◄────────────────────── google_trends
+    │                                     │
+    ├──────────────┬──────────────┐       │
+    ▼              ▼              ▼       │
+sentiment     keyword        absa         │
+_analyzer     _extractor    _analyzer     │
+    │              │                      │
+    │              ├───► hashtag_analyzer │
+    │              │                      │
+    └──────┬───────┘                      │
+           ▼                              │
+    insight_generator ◄───────────────────┘
+           │
+           ▼
+    insight_with_trends
+           │
+           ▼
+    ad_creative_agent
+           │
+           ▼
+    storyboard_agent
+           │
+           ▼
+    video_agent ──────► report_generator
 ```
 
-## 7. 검증 규칙
+---
 
-### 7.1 필수 필드 검증
-- `name`: 비어있지 않아야 함, snake_case
-- `version`: 시맨틱 버전 형식
-- `layer`: 허용된 레이어 중 하나
-- `domain`: 비어있지 않아야 함
-- `input_schema`: 유효한 JSON Schema
-- `output_schema`: 유효한 JSON Schema
+## 6. 검증 규칙 ✅
 
-### 7.2 의존성 검증
+### 6.1 필수 필드 검증
+
+```python
+REQUIRED_FIELDS = ['name', 'description', 'tool_type', 'version', 'layer', 'executor', 'parameters']
+```
+
+### 6.2 의존성 검증
+
 - 모든 의존 도구가 존재해야 함
-- 순환 의존성 불허
+- 순환 의존성 불허 (ToolValidator.validate_dependencies)
 - 자기 자신 의존 불허
 
-### 7.3 스키마 검증
-- `type` 필드 필수
-- `properties`는 object 타입에 필수
-- `required` 배열의 항목은 properties에 존재해야 함
+### 6.3 파라미터 타입
 
-## 8. 새 도구 추가 방법
+```yaml
+# 지원 타입
+type: string | array | object | number | boolean | integer
+```
+
+---
+
+## 7. 새 도구 추가 방법 ✅
 
 ### Step 1: YAML 파일 생성
 
 ```bash
-# tools/definitions/my_new_tool.yaml 생성
+# tools/definitions/my_new_tool.yaml
 ```
 
 ### Step 2: 기본 구조 작성
 
 ```yaml
 name: my_new_tool
-version: "1.0.0"
-layer: analysis        # 적절한 레이어 선택
-domain: analysis       # 적절한 도메인 선택
 description: "새 도구 설명"
+tool_type: analysis
+version: "1.0.0"
+layer: ml_execution
 
-input_schema:
-  type: object
-  properties:
-    input_data:
-      type: string
-      description: "입력 데이터"
-  required: ["input_data"]
+executor: ml_agent.my_new_tool
 
-output_schema:
-  type: object
-  properties:
-    result:
-      type: object
-      description: "분석 결과"
+parameters:
+  - name: input_data
+    type: string
+    required: true
+    description: "입력 데이터"
+
+timeout_sec: 60
+max_retries: 3
 
 dependencies:
-  - preprocessor       # 필요한 의존 도구
+  - preprocessor
 
 produces:
-  - my_new_result      # 생성하는 데이터 유형
+  - my_result
+
+tags:
+  - custom
+  - analysis
 ```
 
 ### Step 3: Hot Reload 확인
 
-파일 저장 시 자동으로 로드됩니다.
-로그에서 확인:
-```
-INFO: Tool reloaded: my_new_tool
+```python
+# 파일 저장 시 자동 로드 (hot_reload.py)
+from dream_agent.tools import get_tool_discovery
+
+discovery = get_tool_discovery()
+spec = discovery.get("my_new_tool")  # 자동 로드됨
 ```
 
 ### Step 4: 검증
 
 ```python
-from dream_agent.tools import validate_tool_spec, get_tool_discovery
+from dream_agent.tools import validate_tool_spec
 
-discovery = get_tool_discovery()
-spec = discovery.get_spec("my_new_tool")
 result = validate_tool_spec(spec)
-
 if not result.valid:
     print(result.errors)
 ```
 
-## 9. Best Practices
+---
 
-1. **명확한 이름**: 도구의 기능을 나타내는 명확한 이름 사용
-2. **버전 관리**: 변경 시 버전 업데이트
-3. **의존성 최소화**: 필요한 의존성만 선언
-4. **스키마 상세화**: 입출력 스키마를 상세히 정의
-5. **태그 활용**: 검색 용이성을 위한 태그 추가
+## 8. Domain Agent 연동 ⚠️
+
+### 8.1 YAML ↔ Agent 매핑
+
+| YAML 도구 | Domain Agent | 상태 |
+|-----------|--------------|------|
+| sentiment_analyzer | SentimentAnalyzerAgent | ✅ |
+| keyword_extractor | KeywordExtractorAgent | ✅ |
+| hashtag_analyzer | HashtagAnalyzerAgent | ✅ |
+| problem_classifier | ProblemClassifierAgent | ✅ |
+| competitor_analyzer | CompetitorAnalyzerAgent | ✅ |
+| google_trends | GoogleTrendsAgent | ✅ |
+| insight_generator | InsightGeneratorAgent | ✅ |
+| video_agent | VideoAgentGraph | ✅ |
+| report_generator | ReportAgentGraph | ✅ |
+| ad_creative_agent | - | ⚠️ Agent 미구현 |
+| storyboard_agent | - | ⚠️ Agent 미구현 |
+| dashboard_agent | - | ⚠️ Agent 미구현 |
+| sales_agent | - | ⚠️ Agent 미구현 |
+| inventory_agent | - | ⚠️ Agent 미구현 |
+
+---
+
+## 🔧 사용자 결정 필요 사항
+
+| 항목 | 설명 | 옵션 |
+|------|------|------|
+| YAML 스키마 표준화 | `parameters` vs `input_schema` 형식 | 현재 방식 유지 / JSON Schema 전환 |
+| 버전 관리 정책 | 도구별 버전 vs 전체 버전 | 개별 관리 / 통합 관리 |
+| 미구현 Agent | ad_creative, storyboard 등 | 구현 우선순위 결정 |
+| executor 네이밍 | `ml_agent.*` 패턴 통일 여부 | 현재 유지 / 통일 |
