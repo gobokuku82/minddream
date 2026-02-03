@@ -161,11 +161,14 @@ execution/domain/
 │   └── insight_generator/  # ✅ insight_generator_agent.py
 ├── content/
 │   ├── video/              # ✅ video_agent_graph.py
-│   └── ad_creative/        # ⚠️ __init__.py만 존재
+│   ├── ad_creative/        # ✅ ad_creative_agent_tool.py (16KB)
+│   └── storyboard/         # ✅ storyboard_agent_tool.py (15KB)
 ├── report/
 │   └── report_agent/       # ✅ report_agent_graph.py
 ├── ops/
-│   └── inventory/          # ⚠️ __init__.py만 존재
+│   ├── dashboard/          # ✅ dashboard_agent_tool.py (14KB)
+│   ├── sales/              # ⚠️ sales_material_generator.py (이름 다름)
+│   └── inventory/          # ❌ __init__.py만 존재
 └── toolkit/                # ✅ 공용 유틸리티
 ```
 

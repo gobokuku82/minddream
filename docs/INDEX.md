@@ -90,9 +90,45 @@ backend/app/dream_agent/
 |--------|------|------|
 | `Intent` | models/intent.py | 의도 분류 결과 |
 | `TodoItem` | models/todo.py | 실행 작업 단위 |
+| `Plan` | models/plan.py | 실행 계획 |
 | `ExecutionResult` | models/execution.py | 실행 결과 |
+| `MLResult`, `BizResult` | models/results.py | ML/비즈니스 결과 |
 | `BaseDomainAgent` | execution/domain/base_agent.py | Agent 기본 클래스 |
 | `ToolSpec` | models/tool.py | YAML 도구 스펙 |
+
+### 추가 폴더 구조
+
+```
+workflow_manager/
+├── hitl_manager/        # Human-in-the-Loop
+│   ├── decision_manager.py
+│   ├── input_requester.py
+│   ├── pause_controller.py
+│   ├── plan_editor.py
+│   ├── nl_plan_modifier.py
+│   └── replan_manager.py
+├── feedback_manager/    # 피드백 관리
+│   ├── feedback_manager.py
+│   ├── plan_edit_logger.py
+│   ├── query_logger.py
+│   └── result_evaluator.py
+├── approval_manager.py
+├── base_manager.py
+├── manager_registry.py
+└── todo_failure_recovery.py
+
+states/                  # LangGraph 상태
+├── base.py
+├── reducers.py
+└── accessors.py
+
+schemas/tool_io/         # Tool I/O 스키마
+├── base.py
+├── sentiment.py
+├── keyword.py
+├── collector.py
+└── insight.py
+```
 
 ### 주요 함수
 
@@ -130,7 +166,8 @@ from backend.app.dream_agent.execution.domain import (
 
 | 항목 | 현재 | 옵션 | 문서 |
 |------|------|------|------|
-| 미구현 Agent | 5개 | 구현 우선순위 | PLANNING |
+| inventory_agent | 유일하게 미구현 | 구현 / 제거 | PLANNING |
+| sales_agent 이름 | YAML↔Agent 불일치 | 이름 통일 | TOOL_SPECIFICATION |
 | 인증 시스템 | 없음 | JWT / OAuth | PLANNING |
 | 다국어 지원 | ko만 테스트 | 실제 테스트 범위 | PLANNING |
 
@@ -140,17 +177,19 @@ from backend.app.dream_agent.execution.domain import (
 
 ### 즉시 필요
 
-1. **미구현 Agent 구현 우선순위 결정**
-   - ad_creative_agent
-   - storyboard_agent
-   - dashboard_agent
-   - sales_agent
-   - inventory_agent
+1. **inventory_agent 구현 또는 제거 결정**
+   - 현재 유일하게 미구현된 Agent
+   - YAML은 존재하나 Agent 파일 없음
 
-2. **에러 코드 체계 확정**
+2. **sales_agent 이름 통일**
+   - YAML: `sales_agent`
+   - Agent: `sales_material_generator.py`
+   - 둘 중 하나로 통일 필요
+
+3. **에러 코드 체계 확정**
    - INTERFACE_CONTRACT.md 6장 참조
 
-3. **테스트 커버리지 목표 설정**
+4. **테스트 커버리지 목표 설정**
    - DEVELOPMENT_GUIDE.md 5.3장 참조
 
 ### 중기 목표

@@ -279,26 +279,26 @@ if not result.valid:
 
 ---
 
-## 8. Domain Agent 연동 ⚠️
+## 8. Domain Agent 연동 ✅
 
 ### 8.1 YAML ↔ Agent 매핑
 
-| YAML 도구 | Domain Agent | 상태 |
-|-----------|--------------|------|
-| sentiment_analyzer | SentimentAnalyzerAgent | ✅ |
-| keyword_extractor | KeywordExtractorAgent | ✅ |
-| hashtag_analyzer | HashtagAnalyzerAgent | ✅ |
-| problem_classifier | ProblemClassifierAgent | ✅ |
-| competitor_analyzer | CompetitorAnalyzerAgent | ✅ |
-| google_trends | GoogleTrendsAgent | ✅ |
-| insight_generator | InsightGeneratorAgent | ✅ |
-| video_agent | VideoAgentGraph | ✅ |
-| report_generator | ReportAgentGraph | ✅ |
-| ad_creative_agent | - | ⚠️ Agent 미구현 |
-| storyboard_agent | - | ⚠️ Agent 미구현 |
-| dashboard_agent | - | ⚠️ Agent 미구현 |
-| sales_agent | - | ⚠️ Agent 미구현 |
-| inventory_agent | - | ⚠️ Agent 미구현 |
+| YAML 도구 | Domain Agent 파일 | 상태 |
+|-----------|-------------------|------|
+| sentiment_analyzer | sentiment_analyzer_agent.py | ✅ |
+| keyword_extractor | keyword_extractor_agent.py | ✅ |
+| hashtag_analyzer | hashtag_analyzer_agent.py | ✅ |
+| problem_classifier | problem_classifier_agent.py | ✅ |
+| competitor_analyzer | competitor_analyzer_agent.py | ✅ |
+| google_trends | google_trends_agent.py | ✅ |
+| insight_generator | insight_generator_agent.py | ✅ |
+| video_agent | video_agent_graph.py | ✅ |
+| report_generator | report_agent_graph.py | ✅ |
+| ad_creative_agent | ad_creative_agent_tool.py (16KB) | ✅ |
+| storyboard_agent | storyboard_agent_tool.py (15KB) | ✅ |
+| dashboard_agent | dashboard_agent_tool.py (14KB) | ✅ |
+| sales_agent | sales_material_generator.py (이름 다름) | ⚠️ |
+| inventory_agent | __init__.py만 존재 | ❌ |
 
 ---
 
@@ -308,5 +308,6 @@ if not result.valid:
 |------|------|------|
 | YAML 스키마 표준화 | `parameters` vs `input_schema` 형식 | 현재 방식 유지 / JSON Schema 전환 |
 | 버전 관리 정책 | 도구별 버전 vs 전체 버전 | 개별 관리 / 통합 관리 |
-| 미구현 Agent | ad_creative, storyboard 등 | 구현 우선순위 결정 |
+| sales_agent 이름 통일 | YAML명과 Agent 파일명 불일치 | YAML 변경 / Agent 변경 |
+| inventory_agent | 유일하게 미구현 | 구현 / 제거 |
 | executor 네이밍 | `ml_agent.*` 패턴 통일 여부 | 현재 유지 / 통일 |

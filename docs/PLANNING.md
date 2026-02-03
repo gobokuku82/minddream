@@ -36,8 +36,8 @@
 |----------|-----------|-----------|-----------|
 | 감성 분석 | "최근 리뷰 감성 분석해줘" | 감성 분포, 주요 키워드 | ✅ |
 | 트렌드 분석 | "요즘 뜨는 키워드 알려줘" | 트렌드 키워드, 해시태그 | ✅ |
-| 콘텐츠 생성 | "광고 스토리보드 만들어줘" | 광고 컨셉, 스토리보드 | ⚠️ Agent 미구현 |
-| 운영 대시보드 | "이번 달 매출 현황" | 매출 차트, KPI 요약 | ⚠️ Agent 미구현 |
+| 콘텐츠 생성 | "광고 스토리보드 만들어줘" | 광고 컨셉, 스토리보드 | ✅ |
+| 운영 대시보드 | "이번 달 매출 현황" | 매출 차트, KPI 요약 | ✅ |
 
 ---
 
@@ -133,8 +133,8 @@
 
 | 도구 | YAML | Agent | 상태 |
 |------|------|-------|------|
-| ad_creative_agent | ✅ | ❌ | ⚠️ YAML만 |
-| storyboard_agent | ✅ | ❌ | ⚠️ YAML만 |
+| ad_creative_agent | ✅ | ✅ ad_creative_agent_tool.py (16KB) | ✅ |
+| storyboard_agent | ✅ | ✅ storyboard_agent_tool.py (15KB) | ✅ |
 | video_agent | ✅ | ✅ video_agent_graph.py | ✅ |
 | report_generator | ✅ | ✅ report_agent_graph.py | ✅ |
 
@@ -142,9 +142,9 @@
 
 | 도구 | YAML | Agent | 상태 |
 |------|------|-------|------|
-| dashboard_agent | ✅ | ❌ | ⚠️ YAML만 |
-| sales_agent | ✅ | ❌ | ⚠️ YAML만 |
-| inventory_agent | ✅ | ❌ | ⚠️ YAML만 |
+| dashboard_agent | ✅ | ✅ dashboard_agent_tool.py (14KB) | ✅ |
+| sales_agent | ✅ | ⚠️ sales_material_generator.py (이름 다름) | ⚠️ |
+| inventory_agent | ✅ | ❌ __init__.py만 존재 | ❌ |
 
 ---
 
@@ -170,8 +170,12 @@
 - ✅ Layer Schema 검증
 - ✅ E2E 테스트 구조
 
-### 5.5 Phase 4 ❌ (예정)
-- ❌ 누락된 Domain Agent 구현 (ad_creative, storyboard, dashboard, sales, inventory)
+### 5.5 Phase 4 ⚠️ (진행 중)
+- ✅ ad_creative_agent 구현 완료
+- ✅ storyboard_agent 구현 완료
+- ✅ dashboard_agent 구현 완료
+- ⚠️ sales_agent: sales_material_generator.py로 구현됨 (이름 불일치)
+- ❌ inventory_agent 미구현
 - ❌ 병렬 실행 지원
 - ❌ 실패 복구 메커니즘
 - ❌ 다국어 실제 테스트
