@@ -28,12 +28,8 @@ class PlanningInput(BaseModel):
             raise ValueError("session_id cannot be empty")
         return v.strip()
 
-    @field_validator('intent')
-    @classmethod
-    def validate_intent(cls, v):
-        if v.intent_type is None:
-            raise ValueError("Intent type is required")
-        return v
+    # NOTE: Intent 검증은 cognitive_node에서 수행됨
+    # 스키마는 문서화 목적으로만 사용
 
 
 class PlanningOutput(BaseModel):

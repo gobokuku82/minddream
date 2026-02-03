@@ -17,14 +17,8 @@ class ExecutionInput(BaseModel):
     previous_results: Dict[str, Any] = Field(default_factory=dict)
     use_mock: bool = False
 
-    @field_validator('todo')
-    @classmethod
-    def validate_todo(cls, v):
-        if v.status not in ['pending', 'in_progress']:
-            raise ValueError(f"Todo must be pending or in_progress, got: {v.status}")
-        if not v.tool:
-            raise ValueError("Todo must have a tool specified")
-        return v
+    # NOTE: Todo 검증은 execution_node에서 수행됨
+    # 스키마는 문서화 목적으로만 사용
 
 
 class ExecutionOutput(BaseModel):

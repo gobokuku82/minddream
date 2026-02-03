@@ -139,7 +139,55 @@ workflow.add_node("execution", execution_node)
 workflow.add_node("response", response_node)
 ```
 
-### 4.2 Tool System (Phase 0-3) ✅
+### 4.2 데이터 구조 주의사항 ⚠️
+
+#### 4.2.1 이중 Intent 시스템
+
+시스템 내 두 가지 Intent 표현 방식이 공존합니다:
+
+| 구분 | 레거시 (Dict) | 신규 (Pydantic) |
+|------|--------------|--------------------|
+| 위치 | cognitive_node.py 출력 | models/intent.py |
+| 키/필드 | `intent_type` (문자열) | `domain` (IntentDomain Enum) |
+| 사용처 | AgentState, planning_node | schemas/planning.py |
+
+**현재 동작**:
+- `cognitive_node`는 항상 레거시 dict 형식(`intent_type` 키)을 반환
+- `AgentState["intent"]`는 `dict` 타입으로 정의됨
+- Planning/Execution 레이어에서 `intent.get("intent_type")` 방식으로 접근
+
+```python
+# AgentState에서의 intent 정의 (states/base.py)
+class AgentState(TypedDict, total=False):
+    intent: dict  # ← dict, NOT Intent Pydantic model
+```
+
+#### 4.2.2 스키마 사용 현황
+
+`schemas/` 디렉토리의 I/O 스키마는 **문서화/명세 목적**으로 정의되어 있으며,
+실제 노드 코드에서는 사용되지 않습니다. 런타임 검증은 각 노드에서 직접 수행됩니다.
+
+| 스키마 | 정의 위치 | 실제 사용 | 상태 |
+|--------|----------|----------|------|
+| CognitiveInput/Output | schemas/cognitive.py | 노드에서 미사용 | 📝 문서용 |
+| PlanningInput/Output | schemas/planning.py | 노드에서 미사용 | 📝 문서용 |
+| ExecutionInput/Output | schemas/execution.py | 노드에서 미사용 | 📝 문서용 |
+| ResponseInput/Output | schemas/response.py | 노드에서 미사용 | 📝 문서용 |
+
+#### 4.2.3 ExecutionResult 클래스
+
+두 개의 ExecutionResult 클래스가 존재합니다:
+
+| 위치 | 타입 | 용도 |
+|------|------|------|
+| `models/execution.py` | Pydantic BaseModel | API/스키마 표준 |
+| `execution/core/base_executor.py` | Plain Python class | Executor 내부 사용 |
+
+> ⚠️ 동일 이름으로 인한 import 혼동 가능성 있음
+
+---
+
+### 4.3 Tool System (Phase 0-3) ✅
 
 | Phase | 기능 | 파일 |
 |-------|------|------|

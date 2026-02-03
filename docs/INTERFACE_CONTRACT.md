@@ -15,6 +15,17 @@
 
 ## 2. 레이어 간 인터페이스
 
+> ### ⚠️ 스키마 사용 현황 알림
+>
+> **현재 상태**: `schemas/` 디렉토리의 I/O 스키마들은 **문서화/명세 목적**으로 정의되어 있으며,
+> 실제 노드 코드에서는 사용되지 않습니다. 런타임 검증은 각 노드에서 직접 수행됩니다.
+>
+> **이중 Intent 시스템**:
+> - **레거시 (dict)**: `cognitive_node.py` 출력 → `AgentState["intent"]` → `intent.get("intent_type")`
+> - **신규 (Pydantic)**: `models/intent.py` → `Intent.domain` (IntentDomain Enum)
+>
+> 🔧 **설계 결정 필요**: 스키마 실제 적용 및 Intent 시스템 통일 여부 검토 필요
+
 ### 2.1 Cognitive Layer I/O ✅
 
 > 실제 파일: `schemas/cognitive.py`
@@ -67,8 +78,12 @@ class PlanningOutput(BaseModel):
 
 **검증 규칙:**
 - `session_id`: 빈 문자열 불가
-- `intent.intent_type`: None 불가 (실제: `intent.domain`)
+- `intent.domain`: None 불가 (IntentDomain Enum)
 - `todos`: 최소 1개 이상
+
+> ⚠️ **중요**: 이 스키마는 문서화/명세 목적입니다. 실제 런타임에서는 `planning_node.py`가
+> `AgentState["intent"]` (dict 타입)을 직접 접근하며, `intent.get("intent_type")` 키를 사용합니다.
+> (이중 Intent 시스템 - 레거시 dict vs Pydantic 모델 공존)
 
 ### 2.3 Execution Layer I/O ✅
 
@@ -96,6 +111,9 @@ class ExecutionOutput(BaseModel):
 - `todo.status`: 'pending' 또는 'in_progress'만 허용
 - `todo.metadata.execution.tool` 또는 `todo.task_type` 필수
 - 실행 실패 시 `updated_todo.status`는 'completed' 불가
+
+> ⚠️ **중요**: 이 스키마는 문서화/명세 목적입니다. 실제 런타임에서는 `execution_node.py`가
+> TodoItem Pydantic 모델을 직접 처리하며, 도구 정보는 `todo.metadata.execution.tool` 경로로 접근합니다.
 
 ### 2.4 Response Layer I/O ✅
 

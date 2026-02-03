@@ -1,7 +1,7 @@
 # Dream Agent 문서 인덱스
 
-> 마지막 업데이트: 2025-02-03
-> 문서 버전: 1.1.0
+> 마지막 업데이트: 2026-02-03
+> 문서 버전: 1.2.0
 
 ---
 
@@ -41,6 +41,8 @@
 |------|------|------|
 | 4-Layer 아키텍처 | Cognitive → Planning → Execution → Response | ✅ |
 | Executor 매핑 | DataExecutor, InsightExecutor, ContentExecutor, OpsExecutor | ✅ |
+| 이중 Intent 시스템 | Legacy dict vs Pydantic 공존 | ⚠️ |
+| 스키마 사용 현황 | I/O 스키마 문서화 목적 (런타임 미사용) | ⚠️ |
 | 디렉토리 구조 | 전체 파일 구조 (179개 Python 파일) | ✅ |
 | Domain Agents | 17개 구현, 1개 미구현 | ⚠️ |
 
@@ -49,7 +51,8 @@
 
 | 섹션 | 내용 | 상태 |
 |------|------|------|
-| Layer I/O 스키마 | Cognitive, Planning, Execution, Response | ✅ |
+| Layer I/O 스키마 | Cognitive, Planning, Execution, Response (문서화 목적) | ⚠️ |
+| 스키마 사용 현황 알림 | 런타임 미사용 명시, 이중 Intent 시스템 설명 | ✅ |
 | 데이터 모델 | Intent, TodoItem, Plan, ExecutionResult | ✅ |
 | REST API | /api/agent/*, /health | ✅ |
 | WebSocket API | /ws/* 실시간 업데이트 | ✅ |
