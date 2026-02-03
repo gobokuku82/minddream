@@ -1,7 +1,23 @@
 # Dream Agent 문서 인덱스
 
 > 마지막 업데이트: 2025-02-03
-> 문서 버전: 1.0.0
+> 문서 버전: 1.1.0
+
+---
+
+## 기존 상세 문서 (README/)
+
+> **중요**: `README/` 폴더에 상세한 개발 문서가 이미 존재합니다.
+
+| 문서 | 설명 |
+|------|------|
+| [README/00_INDEX.md](../README/00_INDEX.md) | 전체 문서 색인 |
+| [README/01_ARCHITECTURE.md](../README/01_ARCHITECTURE.md) | 전체 아키텍처 |
+| [README/02_BACKEND.md](../README/02_BACKEND.md) | FastAPI 백엔드 & WebSocket |
+| [README/03_AGENT_LAYERS.md](../README/03_AGENT_LAYERS.md) | **4-Layer 상세 설명** |
+| [README/04_FRONTEND.md](../README/04_FRONTEND.md) | HTML 대시보드 |
+| [README/05_DATA_STRUCTURE.md](../README/05_DATA_STRUCTURE.md) | 데이터 구조 |
+| [README/06_QUICKSTART.md](../README/06_QUICKSTART.md) | 빠른 시작 가이드 |
 
 ---
 
@@ -16,17 +32,17 @@
 
 ---
 
-## 문서 목록
+## docs/ 문서 목록
 
 ### 1. [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) ✅
 **시스템 아키텍처 문서**
 
 | 섹션 | 내용 | 상태 |
 |------|------|------|
-| 5-Layer 아키텍처 | cognitive → planning → ml_execution → biz_execution → response | ✅ |
-| 디렉토리 구조 | 실제 코드베이스 반영 (orchestrator/, 아님 graph/) | ✅ |
-| Tool System | Phase 0-3 구현 완료 | ✅ |
-| Domain Agents | 위치 및 구조 | ✅ |
+| 4-Layer 아키텍처 | Cognitive → Planning → Execution → Response | ✅ |
+| Executor 매핑 | DataExecutor, InsightExecutor, ContentExecutor, OpsExecutor | ✅ |
+| 디렉토리 구조 | 전체 파일 구조 (179개 Python 파일) | ✅ |
+| Domain Agents | 17개 구현, 1개 미구현 | ⚠️ |
 
 ### 2. [INTERFACE_CONTRACT.md](./INTERFACE_CONTRACT.md) ✅
 **인터페이스 계약 문서**
@@ -34,19 +50,19 @@
 | 섹션 | 내용 | 상태 |
 |------|------|------|
 | Layer I/O 스키마 | Cognitive, Planning, Execution, Response | ✅ |
-| 데이터 모델 | Intent, TodoItem, ExecutionResult, Entity | ✅ |
-| REST API | /api/agent/run, /run-async, /status, /stop | ✅ |
-| WebSocket API | 실시간 업데이트 프로토콜 | ✅ |
+| 데이터 모델 | Intent, TodoItem, Plan, ExecutionResult | ✅ |
+| REST API | /api/agent/*, /health | ✅ |
+| WebSocket API | /ws/* 실시간 업데이트 | ✅ |
 | 에러 코드 | 표준 에러 코드 체계 | 🔧 |
 
-### 3. [PLANNING.md](./PLANNING.md) ⚠️
+### 3. [PLANNING.md](./PLANNING.md) ✅
 **프로젝트 기획서**
 
 | 섹션 | 내용 | 상태 |
 |------|------|------|
-| 기능 명세 | 레이어별 기능 현황 | ⚠️ 일부 미구현 |
-| 도구 현황 | 18개 YAML 정의, 일부 Agent 미구현 | ⚠️ |
-| 마일스톤 | Phase 0.5-3 완료, Phase 4-5 예정 | ⚠️ |
+| 기능 명세 | 레이어별 기능 현황 | ✅ |
+| 도구 현황 | 18개 YAML, 17개 Agent | ✅ |
+| 마일스톤 | Phase 0.5-4 대부분 완료 | ✅ |
 | 보안 요구사항 | 인증, 암호화 등 | 🔧 |
 
 ### 4. [TOOL_SPECIFICATION.md](./TOOL_SPECIFICATION.md) ✅
@@ -54,10 +70,10 @@
 
 | 섹션 | 내용 | 상태 |
 |------|------|------|
-| YAML 형식 | 실제 사용 형식 (parameters 배열) | ✅ |
+| YAML 형식 | parameters 배열 형식 | ✅ |
 | 도구 목록 | 18개 도구 정의 | ✅ |
 | 의존성 그래프 | 도구 간 의존 관계 | ✅ |
-| Agent 매핑 | YAML ↔ Domain Agent 연동 | ⚠️ 5개 미구현 |
+| Agent 매핑 | 17개 구현, 1개 미구현 | ⚠️ |
 
 ### 5. [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) ⚠️
 **개발 가이드**
@@ -65,23 +81,39 @@
 | 섹션 | 내용 | 상태 |
 |------|------|------|
 | 환경 설정 | Python, 의존성, 환경변수 | ✅ |
-| 코딩 컨벤션 | 스타일, 명명 규칙, Import 순서 | ✅ |
-| 테스트 가이드 | pytest 사용법, 구조 | ⚠️ 커버리지 미측정 |
+| 코딩 컨벤션 | 스타일, 명명 규칙 | ✅ |
+| 테스트 가이드 | pytest 사용법 | ⚠️ |
 | 배포 체크리스트 | 배포 전 확인 사항 | 🔧 |
 
 ---
 
 ## 빠른 참조
 
+### 서버 실행
+
+```bash
+cd backend
+uvicorn api.main:app --reload --port 8000
+# http://localhost:8000
+```
+
 ### 핵심 경로
 
 ```
-backend/app/dream_agent/
-├── schemas/           # I/O 스키마 정의
-├── models/            # 데이터 모델
-├── tools/definitions/ # YAML 도구 정의 (18개)
-├── orchestrator/      # LangGraph 워크플로우
-└── execution/domain/  # Domain Agents
+backend/
+├── api/main.py            # FastAPI 엔트리포인트
+└── app/dream_agent/
+    ├── cognitive/         # Layer 1: 의도 파악
+    ├── planning/          # Layer 2: 작업 계획
+    ├── execution/         # Layer 3: 실행
+    │   ├── *_executor.py  # 4개 Executor
+    │   └── domain/        # 18개 Domain Agent
+    ├── response/          # Layer 4: 응답 생성
+    ├── orchestrator/      # LangGraph
+    ├── tools/definitions/ # YAML (18개)
+    ├── models/            # Pydantic 모델
+    ├── schemas/           # I/O 스키마
+    └── workflow_manager/  # 워크플로우 관리
 ```
 
 ### 주요 클래스
@@ -92,129 +124,86 @@ backend/app/dream_agent/
 | `TodoItem` | models/todo.py | 실행 작업 단위 |
 | `Plan` | models/plan.py | 실행 계획 |
 | `ExecutionResult` | models/execution.py | 실행 결과 |
-| `MLResult`, `BizResult` | models/results.py | ML/비즈니스 결과 |
 | `BaseDomainAgent` | execution/domain/base_agent.py | Agent 기본 클래스 |
 | `ToolSpec` | models/tool.py | YAML 도구 스펙 |
 
-### 추가 폴더 구조
+### Workflow Manager 구조
 
 ```
 workflow_manager/
-├── hitl_manager/        # Human-in-the-Loop
+├── planning_manager/     # 계획 관리
+│   ├── plan_manager.py
+│   ├── execution_graph_builder.py
+│   ├── resource_planner.py
+│   └── sync_manager.py
+├── todo_manager/         # Todo 관리
+│   ├── todo_manager.py
+│   ├── todo_creator.py
+│   ├── todo_updater.py
+│   ├── todo_store.py
+│   └── todo_failure_recovery.py
+├── hitl_manager/         # Human-in-the-Loop
 │   ├── decision_manager.py
-│   ├── input_requester.py
-│   ├── pause_controller.py
 │   ├── plan_editor.py
-│   ├── nl_plan_modifier.py
-│   └── replan_manager.py
-├── feedback_manager/    # 피드백 관리
-│   ├── feedback_manager.py
-│   ├── plan_edit_logger.py
-│   ├── query_logger.py
-│   └── result_evaluator.py
-├── approval_manager.py
-├── base_manager.py
-├── manager_registry.py
-└── todo_failure_recovery.py
-
-states/                  # LangGraph 상태
-├── base.py
-├── reducers.py
-└── accessors.py
-
-schemas/tool_io/         # Tool I/O 스키마
-├── base.py
-├── sentiment.py
-├── keyword.py
-├── collector.py
-└── insight.py
-```
-
-### 주요 함수
-
-```python
-# 도구 시스템
-from backend.app.dream_agent.tools import (
-    get_tool_discovery,      # YAML 도구 조회
-    get_tool_registry,       # 클래스 기반 도구
-    validate_all_tools,      # 전체 검증
-    get_tool_dependencies,   # 의존성 조회
-)
-
-# Domain Agent
-from backend.app.dream_agent.execution.domain import (
-    get_domain_agent_registry,
-    get_domain_agent,
-)
+│   └── nl_plan_modifier.py
+├── feedback_manager/     # 피드백 관리
+│   └── feedback_manager.py
+└── approval_manager.py   # 승인 관리
 ```
 
 ---
 
-## 🔧 사용자 결정 필요 항목 요약
-
-### 기술 결정
-
-| 항목 | 현재 | 옵션 | 문서 |
-|------|------|------|------|
-| 세션 저장소 | In-memory | Redis / PostgreSQL | SYSTEM_ARCHITECTURE |
-| 에러 코드 체계 | 미정의 | 표준 코드 적용 여부 | INTERFACE_CONTRACT |
-| 테스트 커버리지 | 미측정 | 목표 설정 필요 | DEVELOPMENT_GUIDE |
-| CI/CD | 없음 | GitHub Actions 등 | DEVELOPMENT_GUIDE |
-| 모니터링 | 없음 | Prometheus 등 | DEVELOPMENT_GUIDE |
-
-### 기능 결정
-
-| 항목 | 현재 | 옵션 | 문서 |
-|------|------|------|------|
-| inventory_agent | 유일하게 미구현 | 구현 / 제거 | PLANNING |
-| sales_agent 이름 | YAML↔Agent 불일치 | 이름 통일 | TOOL_SPECIFICATION |
-| 인증 시스템 | 없음 | JWT / OAuth | PLANNING |
-| 다국어 지원 | ko만 테스트 | 실제 테스트 범위 | PLANNING |
-
----
-
-## 다음 단계 (권장)
+## 🔧 사용자 결정 필요 항목
 
 ### 즉시 필요
 
-1. **inventory_agent 구현 또는 제거 결정**
-   - 현재 유일하게 미구현된 Agent
-   - YAML은 존재하나 Agent 파일 없음
+| 항목 | 현재 | 옵션 |
+|------|------|------|
+| **inventory_agent** | 유일하게 미구현 | 구현 / YAML 제거 |
+| **sales_agent 이름** | YAML↔Agent 불일치 | 통일 필요 |
+| **에러 코드 체계** | 미정의 | 표준 코드 적용 |
 
-2. **sales_agent 이름 통일**
-   - YAML: `sales_agent`
-   - Agent: `sales_material_generator.py`
-   - 둘 중 하나로 통일 필요
+### 기술 결정
 
-3. **에러 코드 체계 확정**
-   - INTERFACE_CONTRACT.md 6장 참조
+| 항목 | 현재 | 옵션 |
+|------|------|------|
+| 세션 저장소 | In-memory | Redis / PostgreSQL |
+| 테스트 커버리지 | 미측정 | 목표 설정 |
+| CI/CD | 없음 | GitHub Actions |
+| 인증 시스템 | 없음 | JWT / OAuth |
+| frontend/ | 비어있음 | React 개발 / 제거 |
 
-4. **테스트 커버리지 목표 설정**
-   - DEVELOPMENT_GUIDE.md 5.3장 참조
+---
 
-### 중기 목표
+## 다음 단계
+
+### 즉시
+
+1. `inventory_agent` 구현 또는 YAML 제거
+2. `sales_agent` ↔ `sales_material_generator.py` 이름 통일
+3. 에러 코드 체계 확정
+
+### 중기
 
 1. CI/CD 파이프라인 구축
-2. 모니터링 시스템 도입
-3. 배포 환경 결정 (AWS/GCP/On-premise)
+2. 테스트 커버리지 측정 및 목표 설정
+3. Redis 캐시 도입
 
-### 장기 목표
+### 장기
 
 1. 운영 환경 배포
-2. 성능 최적화 (병렬 실행)
-3. 보안 강화 (인증, 암호화)
+2. 모니터링 시스템
+3. 보안 강화
 
 ---
 
 ## 문서 기여
 
-문서 수정 시:
-1. 변경 사항에 맞게 상태 아이콘 업데이트
-2. INDEX.md 관련 섹션 업데이트
-3. 커밋 메시지: `docs(<문서명>): <변경 내용>`
+```bash
+# 커밋 메시지 형식
+docs(<문서명>): <변경 내용>
 
-예시:
-```
-docs(PLANNING): Phase 4 마일스톤 업데이트
-docs(INTERFACE_CONTRACT): 에러 코드 체계 확정
+# 예시
+docs(PLANNING): inventory_agent 구현 완료 표시
+docs(INDEX): 문서 버전 업데이트
 ```

@@ -6,268 +6,411 @@
 > - ❌ 미구현
 > - 🔧 사용자 결정 필요
 
+> **참고**: 상세 레이어 문서는 [README/03_AGENT_LAYERS.md](../README/03_AGENT_LAYERS.md) 참조
+
+---
+
 ## 1. 개요
 
-Dream Agent는 4-Layer Hand-off 아키텍처 기반의 AI 에이전트 시스템입니다.
+Dream Agent는 **4-Layer Hand-off 아키텍처** 기반의 K-Beauty 글로벌 트렌드 분석 AI 에이전트입니다.
 LangGraph StateGraph를 활용하여 각 레이어 간 상태 전이를 관리합니다.
+
+---
 
 ## 2. 시스템 구조 ✅
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Dashboard (Web UI)                        │
-│                   WebSocket 기반 실시간 통신                      │
+│                    Dashboard (HTML/CSS/JS)                       │
+│              FastAPI StaticFiles로 서빙 (Flask 아님!)            │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Backend API                              │
-│                    FastAPI + LangGraph                           │
+│                      FastAPI Backend                             │
+│            api/main.py → uvicorn 실행                            │
+│            WebSocket 실시간 통신 포함                             │
 └─────────────────────────────────────────────────────────────────┘
                                 │
         ┌───────────────────────┼───────────────────────┐
         ▼                       ▼                       ▼
 ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-│  Tool System  │      │ Domain Agents │      │   LLM Layer   │
-│  (YAML 기반)  │      │  (비즈니스)   │      │  (OpenAI)     │
+│  Tool System  │      │   Executors   │      │   LLM Layer   │
+│  (YAML 기반)  │      │ (Domain별)    │      │ (gpt-4o-mini) │
 └───────────────┘      └───────────────┘      └───────────────┘
 ```
 
-## 3. 5-Layer Hand-off 아키텍처 ✅
+---
 
-### 3.1 레이어 구조 (실제 구현)
+## 3. 4-Layer Hand-off 아키텍처 ✅
+
+### 3.1 레이어 구조
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Cognitive Layer (인지)                       │
-│  - 사용자 입력 분석                                              │
-│  - Intent 추출 (IntentDomain + IntentCategory)                  │
-│  - 엔티티 인식                                                   │
+│                 Layer 1: COGNITIVE (의도 파악)                   │
+│  - IntentClassifier: 의도 분류 (Domain/Category/Subcategory)    │
+│  - EntityExtractor: 엔티티 추출                                  │
+│  - DialogueManager: 대화 컨텍스트 관리                           │
 └────────────────────────────┬────────────────────────────────────┘
                              │ Intent, Entities
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Planning Layer (계획)                        │
-│  - Todo 리스트 생성                                              │
-│  - 실행 순서 결정                                                │
-│  - 도구 선택                                                     │
+│                 Layer 2: PLANNING (작업 계획)                    │
+│  - LLM 기반 계획 생성                                            │
+│  - Todo 자동 생성 및 의존성 관리 (Topological Sort)              │
+│  - 실행 그래프 (Mermaid)                                         │
 └────────────────────────────┬────────────────────────────────────┘
                              │ Plan, TodoItems
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   ML Execution Layer (ML 실행)                   │
-│  - 감성 분석, 키워드 추출 등 ML 작업                             │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  Biz Execution Layer (비즈니스 실행)             │
-│  - 리포트 생성, 대시보드, 콘텐츠 생성                            │
+│                 Layer 3: EXECUTION (실행)                        │
+│  - ExecutionSupervisor: Todo 라우팅                              │
+│  - DataExecutor: 데이터 수집/처리                                │
+│  - InsightExecutor: 분석/인사이트                                │
+│  - ContentExecutor: 콘텐츠 생성                                  │
+│  - OpsExecutor: 운영 작업                                        │
 └────────────────────────────┬────────────────────────────────────┘
                              │ ExecutionResults
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Response Layer (응답)                        │
-│  - 결과 종합                                                     │
-│  - 사용자 응답 생성                                              │
-│  - 다음 액션 제안                                                │
+│                 Layer 4: RESPONSE (응답 생성)                    │
+│  - 결과 요약                                                     │
+│  - 마크다운 포맷팅                                               │
+│  - 보고서 저장                                                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 레이어 목록 (TodoItem.layer 기준) ✅
+### 3.2 TodoItem.layer 값
 
-| 레이어 | 설명 | 상태 |
-|--------|------|------|
-| `cognitive` | 인지/의도 분석 | ✅ |
-| `planning` | 계획 수립 | ✅ |
-| `ml_execution` | ML 분석 실행 | ✅ |
-| `biz_execution` | 비즈니스 로직 실행 | ✅ |
-| `response` | 응답 생성 | ✅ |
+| layer | 설명 | Executor |
+|-------|------|----------|
+| `cognitive` | 인지 레이어 | - |
+| `planning` | 계획 레이어 | - |
+| `ml_execution` | ML 분석 실행 | DataExecutor, InsightExecutor |
+| `biz_execution` | 비즈니스 로직 | ContentExecutor, OpsExecutor |
+| `response` | 응답 생성 | - |
 
-### 3.3 데이터 흐름 ✅
+### 3.3 Executor 매핑 ✅
 
+```python
+TOOL_TO_EXECUTOR = {
+    # DataExecutor
+    "collector": "data_executor",
+    "preprocessor": "data_executor",
+    "google_trends": "data_executor",
+
+    # InsightExecutor
+    "sentiment_analyzer": "insight_executor",
+    "keyword_extractor": "insight_executor",
+    "hashtag_analyzer": "insight_executor",
+    "problem_classifier": "insight_executor",
+    "competitor_analyzer": "insight_executor",
+    "insight_generator": "insight_executor",
+
+    # ContentExecutor
+    "video_agent": "content_executor",
+    "ad_creative_agent": "content_executor",
+    "storyboard_agent": "content_executor",
+    "report_generator": "content_executor",
+
+    # OpsExecutor
+    "dashboard_agent": "ops_executor",
+    "sales_agent": "ops_executor",
+    "inventory_agent": "ops_executor",
+}
 ```
-User Input
-    │
-    ▼
-CognitiveInput ──► Cognitive Layer ──► CognitiveOutput
-                                            │
-                                            ▼
-                   PlanningInput ◄── Intent, Entities
-                        │
-                        ▼
-                   Planning Layer ──► PlanningOutput
-                                            │
-                                            ▼
-                   ExecutionInput ◄── Plan, TodoItems
-                        │
-                        ├──► ML Execution ──► ExecutionOutput
-                        │
-                        └──► Biz Execution ──► ExecutionOutput
-                                            │
-                                            ▼
-                   ResponseInput ◄── ExecutionResults
-                        │
-                        ▼
-                   Response Layer ──► ResponseOutput
-                                            │
-                                            ▼
-                                      User Response
-```
+
+---
 
 ## 4. 핵심 컴포넌트
 
-### 4.1 LangGraph StateGraph ✅
+### 4.1 LangGraph Orchestrator ✅
 
-> 실제 위치: `orchestrator/builder.py` (graph/ 폴더 아님)
+> 위치: `orchestrator/`
 
 ```python
-# 상태 그래프 정의
+# orchestrator/builder.py
 workflow = StateGraph(AgentState)
 
-# 노드 추가
 workflow.add_node("cognitive", cognitive_node)
 workflow.add_node("planning", planning_node)
-workflow.add_node("ml_execution", ml_execution_node)
-workflow.add_node("biz_execution", biz_execution_node)
+workflow.add_node("execution", execution_node)
 workflow.add_node("response", response_node)
 ```
 
 ### 4.2 Tool System (Phase 0-3) ✅
 
-| Phase | 기능 | 파일 | 상태 |
-|-------|------|------|------|
-| Phase 0 | YAML 기반 Tool Discovery | `tools/discovery.py`, `tools/loader.py` | ✅ |
-| Phase 1 | ToolSpec ↔ BaseTool 호환 | `tools/compat.py` | ✅ |
-| Phase 2 | Hot Reload, Domain Agent | `tools/hot_reload.py`, `execution/domain/` | ✅ |
-| Phase 3 | Validator, Schema 검증 | `tools/validator.py` | ✅ |
+| Phase | 기능 | 파일 |
+|-------|------|------|
+| Phase 0 | YAML 기반 Tool Discovery | `discovery.py`, `loader.py` |
+| Phase 1 | ToolSpec ↔ BaseTool 호환 | `compat.py` |
+| Phase 2 | Hot Reload | `hot_reload.py` |
+| Phase 3 | Validator | `validator.py` |
 
-### 4.3 Domain Agents ✅
+### 4.3 Workflow Manager ✅
+
+```
+workflow_manager/
+├── planning_manager/         # 계획 관리
+│   ├── plan_manager.py
+│   ├── execution_graph_builder.py
+│   ├── resource_planner.py
+│   └── sync_manager.py
+├── todo_manager/             # Todo 관리
+│   ├── todo_manager.py
+│   ├── todo_creator.py
+│   ├── todo_updater.py
+│   ├── todo_store.py
+│   ├── todo_validator.py
+│   ├── todo_queries.py
+│   └── todo_failure_recovery.py
+├── hitl_manager/             # Human-in-the-Loop
+│   ├── decision_manager.py
+│   ├── input_requester.py
+│   ├── pause_controller.py
+│   ├── plan_editor.py
+│   ├── nl_plan_modifier.py
+│   └── replan_manager.py
+├── feedback_manager/         # 피드백 관리
+│   ├── feedback_manager.py
+│   ├── plan_edit_logger.py
+│   ├── query_logger.py
+│   └── result_evaluator.py
+├── approval_manager.py
+├── base_manager.py
+├── manager_registry.py
+└── todo_failure_recovery.py
+```
+
+---
+
+## 5. 디렉토리 구조 (전체) ✅
+
+```
+beta_v001/
+├── backend/
+│   ├── api/                          # FastAPI 애플리케이션
+│   │   ├── main.py                   # ✅ 엔트리포인트
+│   │   ├── routes/
+│   │   │   ├── agent.py              # /api/agent/*
+│   │   │   ├── websocket.py          # /ws/*
+│   │   │   └── health.py             # /health
+│   │   ├── schemas/
+│   │   │   ├── agent.py
+│   │   │   └── websocket.py
+│   │   └── middleware/
+│   │
+│   ├── app/
+│   │   ├── core/                     # 코어 설정
+│   │   │   ├── config.py
+│   │   │   ├── logging.py
+│   │   │   └── file_storage.py
+│   │   │
+│   │   └── dream_agent/
+│   │       ├── cognitive/            # Layer 1
+│   │       │   ├── cognitive_node.py
+│   │       │   ├── intent_classifier.py
+│   │       │   ├── entity_extractor.py  # ← 누락되어있었음
+│   │       │   ├── dialogue_manager.py
+│   │       │   ├── intent_types.py
+│   │       │   ├── language_detector.py
+│   │       │   └── kbeauty_context.py
+│   │       │
+│   │       ├── planning/             # Layer 2
+│   │       │   ├── planning_node.py
+│   │       │   ├── dependency_calculator.py
+│   │       │   ├── intent_mapper.py
+│   │       │   └── tool_catalog.py
+│   │       │
+│   │       ├── execution/            # Layer 3
+│   │       │   ├── execution_node.py
+│   │       │   ├── supervisor.py
+│   │       │   ├── data_executor.py
+│   │       │   ├── insight_executor.py
+│   │       │   ├── content_executor.py
+│   │       │   ├── ops_executor.py
+│   │       │   ├── core/
+│   │       │   │   ├── base_executor.py
+│   │       │   │   ├── executor_registry.py
+│   │       │   │   └── execution_cache.py
+│   │       │   └── domain/           # (아래 참조)
+│   │       │
+│   │       ├── response/             # Layer 4
+│   │       │   └── response_node.py
+│   │       │
+│   │       ├── orchestrator/         # LangGraph
+│   │       │   ├── builder.py
+│   │       │   ├── router.py
+│   │       │   └── checkpointer.py
+│   │       │
+│   │       ├── tools/
+│   │       │   ├── definitions/      # YAML (18개)
+│   │       │   ├── discovery.py
+│   │       │   ├── loader.py
+│   │       │   ├── compat.py
+│   │       │   ├── hot_reload.py
+│   │       │   ├── validator.py
+│   │       │   ├── base_tool.py
+│   │       │   ├── tool_registry.py
+│   │       │   ├── analysis/         # 도구 클래스
+│   │       │   ├── business/
+│   │       │   ├── content/
+│   │       │   ├── data/
+│   │       │   └── utils/
+│   │       │
+│   │       ├── models/
+│   │       │   ├── intent.py
+│   │       │   ├── todo.py
+│   │       │   ├── plan.py
+│   │       │   ├── execution.py
+│   │       │   ├── execution_graph.py
+│   │       │   ├── results.py
+│   │       │   ├── resource.py
+│   │       │   └── tool.py
+│   │       │
+│   │       ├── schemas/
+│   │       │   ├── cognitive.py
+│   │       │   ├── planning.py
+│   │       │   ├── execution.py
+│   │       │   ├── response.py
+│   │       │   └── tool_io/
+│   │       │
+│   │       ├── states/
+│   │       │   ├── base.py
+│   │       │   ├── reducers.py
+│   │       │   └── accessors.py
+│   │       │
+│   │       ├── llm_manager/
+│   │       │   ├── client.py
+│   │       │   ├── config_loader.py
+│   │       │   ├── prompts.py
+│   │       │   └── configs/          # YAML 설정
+│   │       │       ├── data_sources.yaml
+│   │       │       ├── intent_keywords.yaml
+│   │       │       ├── tool_settings.yaml
+│   │       │       └── prompts/
+│   │       │
+│   │       ├── callbacks/
+│   │       └── workflow_manager/     # (위 참조)
+│   │
+│   └── scripts/
+│       └── setup_checkpointer.py
+│
+├── dashboard/                        # HTML 대시보드 (FastAPI 서빙)
+│   ├── templates/
+│   │   └── index.html
+│   └── static/
+│       ├── css/style.css
+│       └── js/app.js
+│
+├── tests/                            # 테스트
+│   ├── unit/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   └── tools/
+│   ├── integration/
+│   └── e2e/
+│
+├── data/                             # 데이터 저장소
+├── docs/                             # 이 문서들
+├── README/                           # 상세 개발 문서 (기존)
+├── frontend/                         # (비어있음)
+└── reports_mind_dream/               # 생성된 보고서
+```
+
+---
+
+## 6. Domain Agents 구조 ✅
 
 ```
 execution/domain/
-├── base_agent.py           # ✅ BaseDomainAgent 추상 클래스
+├── base_agent.py                     # BaseDomainAgent
+
 ├── collection/
-│   ├── collector/          # ✅ collector_agent.py
-│   └── preprocessor/       # ✅ preprocessor_agent.py
+│   ├── collector/collector_agent.py           # ✅
+│   └── preprocessor/preprocessor_agent.py     # ✅
+
 ├── analysis/
-│   ├── sentiment/          # ✅ sentiment_analyzer_agent.py
-│   ├── keyword/            # ✅ keyword_extractor_agent.py
-│   ├── hashtag/            # ✅ hashtag_analyzer_agent.py
-│   ├── classifier/         # ✅ problem_classifier_agent.py
-│   ├── competitor/         # ✅ competitor_analyzer_agent.py
-│   └── trends/             # ✅ google_trends_agent.py
+│   ├── sentiment/sentiment_analyzer_agent.py  # ✅
+│   ├── keyword/keyword_extractor_agent.py     # ✅
+│   ├── hashtag/hashtag_analyzer_agent.py      # ✅
+│   ├── classifier/problem_classifier_agent.py # ✅
+│   ├── competitor/competitor_analyzer_agent.py# ✅
+│   └── trends/google_trends_agent.py          # ✅
+
 ├── insight/
-│   └── insight_generator/  # ✅ insight_generator_agent.py
+│   └── insight_generator/insight_generator_agent.py  # ✅
+
 ├── content/
-│   ├── video/              # ✅ video_agent_graph.py
-│   ├── ad_creative/        # ✅ ad_creative_agent_tool.py (16KB)
-│   └── storyboard/         # ✅ storyboard_agent_tool.py (15KB)
+│   ├── video/
+│   │   ├── video_agent_graph.py               # ✅
+│   │   ├── video_agent_graph_v2.py            # ✅
+│   │   ├── llm/                               # LLM 생성기
+│   │   ├── postprocess/                       # 후처리
+│   │   └── runpod/                            # RunPod 연동
+│   ├── ad_creative/
+│   │   ├── ad_creative_agent_tool.py          # ✅ (16KB)
+│   │   └── ad_creative_generator.py
+│   └── storyboard/
+│       ├── storyboard_agent_tool.py           # ✅ (15KB)
+│       └── video_agent_tool.py
+
 ├── report/
-│   └── report_agent/       # ✅ report_agent_graph.py
+│   ├── report_agent.py
+│   ├── report_agent_tool.py
+│   └── report_agent/
+│       └── report_agent_graph.py              # ✅
+
 ├── ops/
-│   ├── dashboard/          # ✅ dashboard_agent_tool.py (14KB)
-│   ├── sales/              # ⚠️ sales_material_generator.py (이름 다름)
-│   └── inventory/          # ❌ __init__.py만 존재
-└── toolkit/                # ✅ 공용 유틸리티
+│   ├── dashboard/dashboard_agent_tool.py      # ✅ (14KB)
+│   ├── sales/sales_material_generator.py      # ⚠️ 이름 다름
+│   └── inventory/__init__.py                  # ❌ 미구현
+
+└── toolkit/                                   # 공용 유틸리티
 ```
 
-## 5. 디렉토리 구조 (실제) ✅
+---
 
-```
-backend/
-├── api/
-│   ├── routes/
-│   │   └── agent.py              # ✅ API 라우트
-│   └── schemas/                  # ✅ API 스키마
-│
-├── app/
-│   └── dream_agent/
-│       ├── cognitive/            # ✅ Cognitive Layer
-│       │   ├── cognitive_node.py
-│       │   ├── intent_classifier.py
-│       │   ├── intent_types.py
-│       │   ├── language_detector.py
-│       │   └── dialogue_manager.py
-│       │
-│       ├── planning/             # ✅ Planning Layer
-│       │   ├── tool_catalog.py
-│       │   └── __init__.py
-│       │
-│       ├── execution/            # ✅ Execution Layer
-│       │   ├── domain/           # Domain Agents
-│       │   └── core/             # 실행 코어
-│       │
-│       ├── response/             # ✅ Response Layer
-│       │   └── response_node.py
-│       │
-│       ├── orchestrator/         # ✅ LangGraph 정의 (graph/ 아님)
-│       │   ├── builder.py        # StateGraph 빌더
-│       │   ├── router.py         # 라우팅 로직
-│       │   └── checkpointer.py   # 체크포인트
-│       │
-│       ├── tools/                # ✅ Tool System
-│       │   ├── discovery.py
-│       │   ├── loader.py
-│       │   ├── compat.py
-│       │   ├── hot_reload.py
-│       │   ├── validator.py
-│       │   ├── base_tool.py
-│       │   ├── tool_registry.py
-│       │   └── definitions/      # YAML 정의 (18개)
-│       │
-│       ├── models/               # ✅ Pydantic 모델
-│       ├── schemas/              # ✅ I/O 스키마
-│       ├── states/               # ✅ LangGraph 상태
-│       ├── llm_manager/          # ✅ LLM 클라이언트
-│       ├── callbacks/            # ✅ WebSocket 콜백
-│       └── workflow_manager/     # ✅ 워크플로우 관리
-│
-dashboard/
-├── templates/
-│   └── index.html                # ✅ 3-Panel Layout
-├── static/
-│   ├── js/app.js                 # ✅ WebSocket Client
-│   └── css/style.css             # ✅ 스타일
-└── app.py                        # ⚠️ Flask 서버 (확인 필요)
-```
-
-## 6. 기술 스택 ✅
+## 7. 기술 스택 ✅
 
 | 영역 | 기술 | 상태 |
 |------|------|------|
-| Backend Framework | FastAPI | ✅ |
-| Workflow Engine | LangGraph (StateGraph) | ✅ |
-| LLM | OpenAI GPT-4 | ✅ |
+| Backend | FastAPI | ✅ |
+| Entry Point | `uvicorn api.main:app` | ✅ |
+| Workflow | LangGraph (StateGraph) | ✅ |
+| LLM | OpenAI (gpt-4o-mini) | ✅ |
 | Validation | Pydantic v2 | ✅ |
-| Dashboard | Flask + WebSocket | ⚠️ |
+| Dashboard | FastAPI StaticFiles | ✅ |
 | 실시간 통신 | WebSocket | ✅ |
 | 설정 관리 | YAML | ✅ |
-| 테스트 | pytest | ⚠️ 테스트 커버리지 확인 필요 |
+| 테스트 | pytest | ✅ |
+| Database | PostgreSQL (Checkpoint) | ⚠️ |
+| Cache | Redis | ❌ Phase 2 |
 
-## 7. 확장 포인트 ✅
+---
 
-### 7.1 새 도구 추가
-1. `tools/definitions/`에 YAML 파일 추가
-2. Hot Reload가 자동 감지
-3. ToolValidator가 검증
+## 8. 서버 실행 ✅
 
-### 7.2 새 Domain Agent 추가
-1. `BaseDomainAgent` 상속
-2. `DomainAgentRegistry`에 등록
-3. `execute()` 메서드 구현
+```bash
+# 1. 환경 변수 설정
+cp .env.example .env
 
-### 7.3 새 레이어 추가
-1. `schemas/`에 Input/Output 스키마 정의
-2. `orchestrator/router.py`에 전이 로직 추가
-3. `orchestrator/builder.py`에 노드 등록
+# 2. 서버 실행
+cd backend
+uvicorn api.main:app --reload --port 8000
+
+# 3. 대시보드 접속
+# http://localhost:8000
+```
 
 ---
 
 ## 🔧 사용자 결정 필요 사항
 
-| 항목 | 설명 | 옵션 |
+| 항목 | 현재 | 옵션 |
 |------|------|------|
-| 세션 저장소 | 현재 In-memory (agent.py:13) | Redis / PostgreSQL / In-memory |
-| Dashboard 서버 | Flask vs FastAPI 통합 | 분리 유지 / FastAPI 통합 |
-| 테스트 전략 | 테스트 커버리지 목표 | 50% / 70% / 90% |
+| 세션 저장소 | In-memory | Redis / PostgreSQL |
+| inventory_agent | 미구현 | 구현 / YAML 제거 |
+| sales_agent 이름 | 불일치 | 통일 필요 |
+| frontend/ | 비어있음 | React 개발 / 제거 |
