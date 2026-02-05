@@ -6,14 +6,14 @@ Phase 3: field_validator 기반 검증 추가.
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Dict, Any, List
-from ..models.intent import Intent
+from ..models.intent import HierarchicalIntent
 from ..models.todo import TodoItem
 from ..models.plan import Plan
 
 
 class PlanningInput(BaseModel):
     """Planning Layer 입력"""
-    intent: Intent
+    intent: HierarchicalIntent
     session_id: str
     context: Dict[str, Any] = Field(default_factory=dict)
     constraints: Dict[str, Any] = Field(default_factory=dict)

@@ -33,12 +33,14 @@ class LogContext:
     def __init__(
         self,
         logger: logging.Logger,
-        operation: str,
+        operation: Optional[str] = None,
         session_id: Optional[str] = None,
+        *,
+        node: Optional[str] = None,
         **extra: Any
     ):
         self.logger = logger
-        self.operation = operation
+        self.operation = operation or node or "unknown"
         self.session_id = session_id
         self.extra = extra
 
@@ -61,3 +63,15 @@ class LogContext:
     def log(self, message: str, level: int = logging.INFO):
         """Log a message within this context."""
         self.logger.log(level, f"[{self.operation}] {message}")
+
+    def info(self, message: str):
+        self.logger.info(f"[{self.operation}] {message}")
+
+    def warning(self, message: str):
+        self.logger.warning(f"[{self.operation}] {message}")
+
+    def error(self, message: str, exc_info: bool = False):
+        self.logger.error(f"[{self.operation}] {message}", exc_info=exc_info)
+
+    def debug(self, message: str):
+        self.logger.debug(f"[{self.operation}] {message}")

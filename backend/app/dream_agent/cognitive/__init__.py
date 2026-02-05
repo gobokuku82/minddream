@@ -10,8 +10,8 @@ from .cognitive_node import cognitive_node
 
 # Phase 1 components (optional imports)
 try:
-    from .intent_classifier import (
-        IntentClassifier,
+    from .intent_classifier import IntentClassifier
+    from ..models.intent import (
         HierarchicalIntent,
         IntentDomain,
         IntentCategory,

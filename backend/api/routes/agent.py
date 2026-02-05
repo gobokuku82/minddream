@@ -6,11 +6,10 @@ import uuid
 
 from ..schemas.agent import AgentRequest, AgentResponse, AgentStatus
 from .websocket import manager
+from backend.app.core.session_store import get_session_store
+from backend.app.core.business_store import get_business_store
 
 router = APIRouter()
-
-# In-memory session storage (TODO: Redis로 교체)
-sessions: dict = {}
 
 
 @router.post("/run", response_model=AgentResponse)
@@ -20,14 +19,15 @@ async def run_agent(request: AgentRequest):
 
     짧은 작업에 적합. 응답이 올 때까지 대기.
     """
-    from backend.app.dream_agent.orchestrator import create_agent
+    from backend.app.dream_agent.orchestrator import create_agent, get_checkpointer
     from backend.app.dream_agent.states import create_initial_state
 
     session_id = request.session_id or str(uuid.uuid4())
 
     try:
         # Agent 생성
-        agent = create_agent()
+        checkpointer = await get_checkpointer()
+        agent = create_agent(checkpointer=checkpointer)
 
         # 초기 상태 생성
         state = create_initial_state(
@@ -44,10 +44,20 @@ async def run_agent(request: AgentRequest):
             final_state = event
 
         # 결과 반환
+        # astream은 {node_name: node_output} 형태로 yield
+        # response 노드의 출력: {"response": str, "saved_report_path": ...}
+        response_text = ""
+        if final_state:
+            response_data = final_state.get("response", "")
+            if isinstance(response_data, dict):
+                response_text = response_data.get("response", "")
+            else:
+                response_text = response_data or ""
+
         return AgentResponse(
             session_id=session_id,
             status="completed",
-            response=final_state.get("response", "") if final_state else "",
+            response=response_text,
             todos=[],  # TODO: Todo 직렬화
         )
 
@@ -66,12 +76,13 @@ async def run_agent_async(
     긴 작업에 적합. WebSocket으로 진행 상황 전송.
     """
     session_id = request.session_id or str(uuid.uuid4())
+    store = get_session_store()
 
-    # 세션 초기화
-    sessions[session_id] = {
+    # 세션 초기화 (JSON 파일로 저장)
+    store.save(session_id, {
         "status": "running",
         "request": request.model_dump(),
-    }
+    })
 
     # 백그라운드에서 Agent 실행
     background_tasks.add_task(
@@ -95,11 +106,15 @@ async def _run_agent_background(
     language: str,
 ):
     """백그라운드 Agent 실행"""
-    from backend.app.dream_agent.orchestrator import create_agent
+    from backend.app.dream_agent.orchestrator import create_agent, get_checkpointer
     from backend.app.dream_agent.states import create_initial_state
 
+    session_store = get_session_store()
+    biz_store = get_business_store()
+
     try:
-        agent = create_agent()
+        checkpointer = await get_checkpointer()
+        agent = create_agent(checkpointer=checkpointer)
         state = create_initial_state(
             user_input=user_input,
             language=language,
@@ -107,37 +122,38 @@ async def _run_agent_background(
         )
 
         config = {"configurable": {"thread_id": session_id}}
+        event = None
 
         async for event in agent.astream(state, config):
-            # WebSocket으로 상태 업데이트 전송
-            if "todos" in event:
-                # Todo 객체를 직렬화
-                todos_data = []
-                for todo in event["todos"]:
-                    if hasattr(todo, "model_dump"):
-                        todos_data.append(todo.model_dump())
-                    elif hasattr(todo, "dict"):
-                        todos_data.append(todo.dict())
-                    elif isinstance(todo, dict):
-                        todos_data.append(todo)
-                    else:
-                        todos_data.append({
-                            "id": getattr(todo, "id", str(uuid.uuid4())),
-                            "task": getattr(todo, "task", str(todo)),
-                            "status": getattr(todo, "status", "pending"),
-                            "layer": getattr(todo, "layer", "planning"),
-                            "metadata": getattr(todo, "metadata", {}),
-                        })
+            # event = {node_name: state_update_dict}
+            for node_name, node_output in event.items():
+                if not isinstance(node_output, dict):
+                    continue
 
-                await manager.send_update(session_id, {
-                    "type": "todo_update",
-                    "data": {"todos": todos_data},
-                })
+                # Planning 노드: plan + todos 저장
+                if "todos" in node_output:
+                    todos_data = _serialize_todos(node_output["todos"])
+                    biz_store.save_todos(session_id, todos_data)
 
-        # 완료 메시지
-        final_response = event.get("response", "") if event else ""
-        sessions[session_id]["status"] = "completed"
-        sessions[session_id]["response"] = final_response
+                    if "plan_obj" in node_output:
+                        plan_data = _serialize_plan(node_output)
+                        biz_store.save_plan(session_id, plan_data)
+
+                    await manager.send_update(session_id, {
+                        "type": "todo_update",
+                        "data": {"todos": todos_data},
+                    })
+
+                # Execution 노드: 실행 결과 저장
+                if "execution_result" in node_output:
+                    result = node_output["execution_result"]
+                    if isinstance(result, dict):
+                        biz_store.save_execution_result(session_id, result)
+
+        # 완료
+        final_response = _extract_response(event)
+        session_store.update_field(session_id, "status", "completed")
+        session_store.update_field(session_id, "response", final_response)
 
         await manager.send_update(session_id, {
             "type": "complete",
@@ -145,8 +161,8 @@ async def _run_agent_background(
         })
 
     except Exception as e:
-        sessions[session_id]["status"] = "failed"
-        sessions[session_id]["error"] = str(e)
+        session_store.update_field(session_id, "status", "failed")
+        session_store.update_field(session_id, "error", str(e))
 
         await manager.send_update(session_id, {
             "type": "error",
@@ -154,13 +170,71 @@ async def _run_agent_background(
         })
 
 
+def _serialize_todo(todo) -> dict:
+    """TodoItem (Pydantic/dict/object) → JSON-safe dict"""
+    if hasattr(todo, "model_dump"):
+        return todo.model_dump(mode="json")
+    if isinstance(todo, dict):
+        return todo
+    return {
+        "id": str(getattr(todo, "id", "")),
+        "task": str(getattr(todo, "task", "")),
+        "status": str(getattr(todo, "status", "pending")),
+        "layer": str(getattr(todo, "layer", "unknown")),
+    }
+
+
+def _serialize_todos(todos) -> list:
+    """TodoItem 리스트 직렬화"""
+    return [_serialize_todo(t) for t in todos]
+
+
+def _serialize_plan(node_output: dict) -> dict:
+    """Planning 노드 출력에서 Plan 메타데이터 추출"""
+    plan_data = {}
+    plan_obj = node_output.get("plan_obj")
+    if plan_obj and hasattr(plan_obj, "model_dump"):
+        plan_data = plan_obj.model_dump(mode="json")
+    elif isinstance(plan_obj, dict):
+        plan_data = plan_obj
+
+    # 추가 필드
+    for key in ("plan_id", "cost_estimate", "mermaid_diagram"):
+        if key in node_output:
+            val = node_output[key]
+            plan_data[key] = val.model_dump(mode="json") if hasattr(val, "model_dump") else val
+
+    plan_text = node_output.get("plan")
+    if isinstance(plan_text, dict):
+        plan_data["plan_description"] = plan_text.get("plan_description", "")
+
+    return plan_data
+
+
+def _extract_response(event) -> str:
+    """마지막 astream 이벤트에서 응답 텍스트 추출"""
+    if not event:
+        return ""
+    # event = {node_name: output_dict}
+    for node_output in event.values():
+        if isinstance(node_output, dict):
+            resp = node_output.get("response", "")
+            if isinstance(resp, dict):
+                return resp.get("response", "")
+            if resp:
+                return str(resp)
+    return ""
+
+
 @router.get("/status/{session_id}", response_model=AgentStatus)
 async def get_agent_status(session_id: str):
     """Agent 실행 상태 조회"""
-    if session_id not in sessions:
+    store = get_session_store()
+    session = store.load(session_id)
+
+    if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    session = sessions[session_id]
     return AgentStatus(
         session_id=session_id,
         status=session["status"],
@@ -172,10 +246,12 @@ async def get_agent_status(session_id: str):
 @router.post("/stop/{session_id}")
 async def stop_agent(session_id: str):
     """Agent 실행 중지 (HITL)"""
-    if session_id not in sessions:
+    store = get_session_store()
+
+    if not store.exists(session_id):
         raise HTTPException(status_code=404, detail="Session not found")
 
     # TODO: 실제 Agent 중지 로직 구현
-    sessions[session_id]["status"] = "stopped"
+    store.update_field(session_id, "status", "stopped")
 
     return {"message": "Agent stopped", "session_id": session_id}

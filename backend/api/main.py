@@ -1,5 +1,12 @@
 """FastAPI Application Entry Point"""
 
+# Windows: psycopg async 호환을 위해 SelectorEventLoop 사용
+# uvicorn이 이벤트 루프를 생성하기 전에 설정해야 함
+import sys
+if sys.platform == "win32":
+    import asyncio
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +16,7 @@ from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 
 from .routes import agent_router, websocket_router, health_router
+from backend.app.dream_agent.orchestrator import setup_checkpointer, cleanup_checkpointer
 
 # Dashboard paths
 DASHBOARD_DIR = Path(__file__).parent.parent.parent / "dashboard"
@@ -21,9 +29,11 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     print("Starting Dream Agent API...")
+    await setup_checkpointer()
     yield
     # Shutdown
     print("Shutting down Dream Agent API...")
+    await cleanup_checkpointer()
 
 
 def create_app() -> FastAPI:
@@ -70,4 +80,10 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.api.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "backend.api.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        loop="asyncio",
+    )

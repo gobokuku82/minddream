@@ -67,13 +67,19 @@ from .results import (
     FinalResponse,
 )
 
-# Intent Models (Phase 0.5 신규)
+# Intent Models (SSOT — 3-depth 계층적 Intent 체계)
 from .intent import (
-    Intent,
-    Entity,
-    IntentClassificationResult,
     IntentDomain,
     IntentCategory,
+    IntentSubcategory,
+    HierarchicalIntent,
+    Intent,  # backward-compatible alias for HierarchicalIntent
+    Entity,
+    DOMAIN_TO_CATEGORIES,
+    CATEGORY_TO_SUBCATEGORIES,
+    get_categories_for_domain,
+    get_subcategories_for_category,
+    validate_intent_hierarchy,
 )
 
 # Execution Models (Phase 0.5 신규)
@@ -129,12 +135,18 @@ __all__ = [
     "MLResult",
     "BizResult",
     "FinalResponse",
-    # Intent (Phase 0.5 신규)
-    "Intent",
-    "Entity",
-    "IntentClassificationResult",
+    # Intent (SSOT — 3-depth 계층적 Intent 체계)
     "IntentDomain",
     "IntentCategory",
+    "IntentSubcategory",
+    "HierarchicalIntent",
+    "Intent",
+    "Entity",
+    "DOMAIN_TO_CATEGORIES",
+    "CATEGORY_TO_SUBCATEGORIES",
+    "get_categories_for_domain",
+    "get_subcategories_for_category",
+    "validate_intent_hierarchy",
     # Execution (Phase 0.5 신규)
     "ExecutionResult",
     "ExecutionContext",

@@ -6,6 +6,8 @@ Phase 1: ToolDiscovery 통합으로 YAML 기반 동적 도구/레이어 추론 �
 import json
 from typing import Dict, Any, Optional, Tuple
 
+from langgraph.types import Command
+
 from backend.app.core.logging import get_logger, LogContext
 from backend.app.dream_agent.states.accessors import (
     get_user_input,
@@ -19,7 +21,7 @@ from backend.app.dream_agent.llm_manager import (
     PLANNING_SYSTEM_PROMPT,
     format_planning_prompt
 )
-from backend.app.dream_agent.workflow_manager import TodoValidator
+from backend.app.dream_agent.workflow_manager import TodoValidator, TodoDependencyManager
 from backend.app.dream_agent.workflow_manager.planning_manager import (
     plan_manager,
     resource_planner,
@@ -145,7 +147,7 @@ def _infer_tool_and_layer(
     return inferred_tool, inferred_layer
 
 
-async def planning_node(state: Dict[str, Any]) -> Dict[str, Any]:
+async def planning_node(state: Dict[str, Any]) -> Command:
     """
     Planning Layer - 계획 수립 및 Todo 생성
 
@@ -153,7 +155,7 @@ async def planning_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state: AgentState
 
     Returns:
-        Dict with 'plan', 'todos', 'target_context'
+        Command with plan data, goto="execution"|"response"
     """
     log = LogContext(logger, node="planning")
     user_input = get_user_input(state)
@@ -479,19 +481,52 @@ async def planning_node(state: Dict[str, Any]) -> Dict[str, Any]:
     for t in todos:
         log.info(f"[planning] Todo: task={t.task}, layer={t.layer}, status={t.status}")
 
-    # Phase 2 통합: 상세한 정보 반환
-    return {
-        # 기존 필드 (하위 호환성 유지)
-        "plan": plan_description_text,
-        "todos": todos,
-        "target_context": plan_description_text["plan_description"],
+    # Hand-off: 다음 노드 결정
+    next_node = _determine_next_node_after_planning(todos, intent)
+    log.info(f"[planning] Routing to: {next_node}")
 
-        # Phase 2 신규 필드
-        "plan_obj": plan_obj,  # Plan 객체
-        "plan_id": plan_obj.plan_id,
-        "resource_plan": resource_plan,
-        "execution_graph": execution_graph,
-        "cost_estimate": cost_estimate,
-        "langgraph_commands": execution_graph.langgraph_commands,
-        "mermaid_diagram": execution_graph.mermaid_diagram,
-    }
+    return Command(
+        update={
+            # 기존 필드 (하위 호환성 유지)
+            "plan": plan_description_text,
+            "todos": todos,
+            "target_context": plan_description_text["plan_description"],
+            # Phase 2 신규 필드
+            "plan_obj": plan_obj,
+            "plan_id": plan_obj.plan_id,
+            "resource_plan": resource_plan,
+            "execution_graph": execution_graph,
+            "cost_estimate": cost_estimate,
+            "langgraph_commands": execution_graph.langgraph_commands,
+            "mermaid_diagram": execution_graph.mermaid_diagram,
+        },
+        goto=next_node,
+    )
+
+
+def _determine_next_node_after_planning(todos: list, intent: dict) -> str:
+    """
+    Planning 이후 다음 노드 결정 (route_to_execution 로직 흡수)
+
+    Args:
+        todos: 생성된 TodoItem 리스트
+        intent: Cognitive layer의 intent 결과
+
+    Returns:
+        다음 노드: "execution" | "response"
+    """
+    try:
+        ready_todos = TodoDependencyManager.get_ready_todos(todos)
+        if ready_todos:
+            return "execution"
+
+        requires_ml = intent.get("requires_ml", False)
+        requires_biz = intent.get("requires_biz", False)
+        if requires_ml or requires_biz:
+            return "execution"
+
+        return "response"
+
+    except Exception as e:
+        logger.error(f"[planning] Route decision error: {e}", exc_info=True)
+        return "response"

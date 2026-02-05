@@ -1,4 +1,8 @@
-"""Checkpointer - LangGraph AsyncPostgresSaver for state persistence"""
+"""Checkpointer - LangGraph AsyncPostgresSaver for state persistence
+
+AsyncConnectionPool을 사용한 checkpointer 관리.
+Windows에서는 main.py에서 WindowsSelectorEventLoopPolicy를 설정해야 합니다.
+"""
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
@@ -33,7 +37,7 @@ async def get_connection_pool() -> AsyncConnectionPool:
             conninfo=db_uri,
             min_size=2,
             max_size=10,
-            open=False,  # Don't open on creation
+            open=False,
         )
         await _pool.open()
         logger.info("Checkpoint connection pool opened")
@@ -45,11 +49,6 @@ async def get_checkpointer() -> AsyncPostgresSaver:
     """
     Get or create the AsyncPostgresSaver checkpointer.
 
-    This function:
-    1. Creates/gets the connection pool
-    2. Creates the checkpointer
-    3. Sets up the database tables if they don't exist
-
     Returns:
         AsyncPostgresSaver instance
     """
@@ -57,10 +56,6 @@ async def get_checkpointer() -> AsyncPostgresSaver:
 
     if _checkpointer is None:
         pool = await get_connection_pool()
-
-        # Create checkpointer with the pool
-        # Note: Tables should be created manually using scripts/setup_checkpointer.py
-        # or by running the SQL schema directly (LangGraph's setup() has issues on Windows)
         _checkpointer = AsyncPostgresSaver(pool)
         logger.info("Checkpointer created (using existing tables)")
 
@@ -70,9 +65,7 @@ async def get_checkpointer() -> AsyncPostgresSaver:
 @asynccontextmanager
 async def checkpointer_context() -> AsyncGenerator[AsyncPostgresSaver, None]:
     """
-    Context manager for checkpointer usage.
-
-    Ensures proper cleanup of resources.
+    Context manager for one-off checkpointer usage.
 
     Usage:
         async with checkpointer_context() as checkpointer:
@@ -83,7 +76,6 @@ async def checkpointer_context() -> AsyncGenerator[AsyncPostgresSaver, None]:
     try:
         yield checkpointer
     finally:
-        # Pool cleanup is handled at application shutdown
         pass
 
 

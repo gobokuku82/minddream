@@ -6,6 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
+from langgraph.types import Command
+from langgraph.graph import END
+
 from backend.app.core.logging import get_logger, LogContext
 from backend.app.dream_agent.states.accessors import (
     get_user_input,
@@ -241,7 +244,7 @@ def _truncate_json_string(data: Any, max_chars: int = 20000) -> str:
     return json_str[:max_chars] + "\n... (truncated)"
 
 
-async def response_node(state: Dict[str, Any]) -> Dict[str, Any]:
+async def response_node(state: Dict[str, Any]) -> Command:
     """
     Response Layer - 최종 응답 생성
 
@@ -363,7 +366,10 @@ async def response_node(state: Dict[str, Any]) -> Dict[str, Any]:
         if saved_report_path:
             log.info(f"Trend report saved to: {saved_report_path}")
 
-    return {
-        "response": response,
-        "saved_report_path": saved_report_path
-    }
+    return Command(
+        update={
+            "response": response,
+            "saved_report_path": saved_report_path,
+        },
+        goto=END,
+    )

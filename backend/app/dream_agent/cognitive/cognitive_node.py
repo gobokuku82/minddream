@@ -9,6 +9,8 @@ Phase 1 고도화:
 import json
 from typing import Dict, Any, Optional
 
+from langgraph.types import Command
+
 from backend.app.core.logging import get_logger, LogContext
 from backend.app.dream_agent.states.accessors import (
     get_user_input,
@@ -100,7 +102,7 @@ async def cognitive_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state: AgentState
 
     Returns:
-        Dict with 'intent', 'current_context', and optionally 'dialogue_context'
+        Command with 'intent', 'current_context', goto='planning'
     """
     log = LogContext(logger, node="cognitive")
     user_input = get_user_input(state)
@@ -216,13 +218,16 @@ async def _cognitive_node_v2(state: Dict[str, Any], log: LogContext) -> Dict[str
 
         log.info("Phase 1 cognitive analysis completed")
 
-        return {
-            "intent": legacy_intent,
-            "current_context": context_summary,
-            "dialogue_context": dialogue_manager.to_dict(),
-            "hierarchical_intent": hierarchical_intent.dict(),
-            "extracted_entities": formatted_entities
-        }
+        return Command(
+            update={
+                "intent": legacy_intent,
+                "current_context": context_summary,
+                "dialogue_context": dialogue_manager.to_dict(),
+                "hierarchical_intent": hierarchical_intent.dict(),
+                "extracted_entities": formatted_entities,
+            },
+            goto="planning",
+        )
 
     except Exception as e:
         log.error(f"Phase 1 cognitive error: {e}", exc_info=True)
@@ -288,10 +293,13 @@ async def _cognitive_node_legacy(state: Dict[str, Any], log: LogContext) -> Dict
             f"sources={intent['extracted_entities']['data_sources']}"
         )
 
-    return {
-        "intent": intent,
-        "current_context": intent.get("summary", "")
-    }
+    return Command(
+        update={
+            "intent": intent,
+            "current_context": intent.get("summary", ""),
+        },
+        goto="planning",
+    )
 
 
 def _convert_to_legacy_intent(
