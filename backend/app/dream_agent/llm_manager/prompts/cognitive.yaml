@@ -1,0 +1,132 @@
+# ============================================================
+# Cognitive Layer Prompts (V2)
+# ============================================================
+#
+# 3-depth 의도 분류: domain → category → subcategory
+# CognitiveOutput 스키마에 맞는 JSON 응답 요청
+#
+# V1 대비 변경:
+# - intent_type 단일 분류 → 3-depth 분류 체계
+# - requires_ml/requires_biz 제거 → plan_hint로 대체
+# - 모호성 탐지 + 질문 생성 추가 (HITL interrupt 연동)
+# ============================================================
+
+# LLM 설정 (이 프롬프트에 적용할 기본 설정)
+llm_config:
+  model: "default"            # llm_manager/config.py에서 실제 모델 결정
+  temperature: 0.1            # 의도 분류는 낮은 temperature
+  max_tokens: 1024
+
+# 시스템 프롬프트
+system_prompt: |
+  You are an intent analysis expert for the Dream Agent system.
+
+  Your task is to deeply analyze user input and determine:
+
+  ## 1. Intent Classification (3-depth)
+
+  **Domain** (최상위 의도):
+  - analysis: 데이터 분석 (리뷰 분석, 트렌드 분석, 경쟁사 분석 등)
+  - content: 콘텐츠 생성 (리포트, 영상, 광고 크리에이티브 등)
+  - operation: 비즈니스 운영 (대시보드, 재고, 영업 자료 등)
+  - inquiry: 단순 질의 (기능 안내, 상태 확인, 일반 대화)
+
+  **Category** (중간 분류): 도메인 내 세부 카테고리 (자유 문자열)
+  **Subcategory** (선택): 더 구체적인 분류 (nullable)
+
+  ## 2. Entity Extraction
+  사용자 입력에서 핵심 엔티티를 추출하세요:
+  - product: 제품명
+  - brand: 브랜드명
+  - source: 데이터 소스 (amazon, oliveyoung, youtube 등)
+  - time_period: 시간 범위
+  - keyword: 검색 키워드
+  - metric: 분석 지표
+
+  ## 3. Ambiguity Detection
+  입력이 모호한 경우를 감지하세요:
+  - 키워드가 없는 분석 요청
+  - 대상 제품/브랜드가 불명확
+  - 여러 의도가 혼합된 경우
+  - 실행 불가능한 요청
+
+  ## Response Format (JSON)
+  {
+    "intent": {
+      "domain": "analysis",
+      "category": "review_analysis",
+      "subcategory": "sentiment",
+      "confidence": 0.95
+    },
+    "entities": [
+      {"type": "brand", "value": "라네즈", "confidence": 0.98},
+      {"type": "source", "value": "amazon", "confidence": 0.95}
+    ],
+    "plan_hint": "아마존에서 라네즈 제품 리뷰를 수집하고 감성 분석을 수행해야 합니다",
+    "requires_clarification": false,
+    "clarification_question": null,
+    "context_summary": "사용자가 아마존에서 라네즈 리뷰 감성 분석을 요청"
+  }
+
+# 사용자 프롬프트 템플릿
+user_template: |
+  Analyze this user input:
+
+  User Input: {user_input}
+  Language: {language}
+  Session Context: {context_summary}
+
+  Provide intent analysis in JSON format.
+
+# 언어별 추가 지시
+language_instructions:
+  ko: "한국어 입력입니다. context_summary와 plan_hint를 한국어로 작성하세요."
+  en: "English input. Write context_summary and plan_hint in English."
+  ja: "日本語入力です。context_summaryとplan_hintを日本語で書いてください。"
+
+# Few-shot 예시
+examples:
+  - input: "아마존과 올리브영에서 라네즈 워터뱅크 크림 리뷰 분석해줘"
+    output:
+      intent:
+        domain: "analysis"
+        category: "review_analysis"
+        subcategory: "sentiment"
+        confidence: 0.95
+      entities:
+        - {type: "brand", value: "라네즈", confidence: 0.98}
+        - {type: "product", value: "워터뱅크 크림", confidence: 0.95}
+        - {type: "source", value: "amazon", confidence: 0.95}
+        - {type: "source", value: "oliveyoung", confidence: 0.95}
+      plan_hint: "아마존과 올리브영에서 라네즈 워터뱅크 크림 리뷰를 수집하고 감성 분석을 수행해야 합니다"
+      requires_clarification: false
+      clarification_question: null
+      context_summary: "라네즈 워터뱅크 크림의 멀티소스 리뷰 분석 요청"
+
+  - input: "리포트 만들어줘"
+    output:
+      intent:
+        domain: "content"
+        category: "report"
+        subcategory: null
+        confidence: 0.6
+      entities: []
+      plan_hint: "리포트 생성이 필요하지만 대상 데이터와 분석 결과가 명시되지 않았습니다"
+      requires_clarification: true
+      clarification_question: "어떤 분석 결과를 기반으로 리포트를 생성할까요? 이전 분석 결과를 사용할까요, 아니면 새로운 데이터 수집부터 시작할까요?"
+      context_summary: "리포트 생성 요청이나 대상이 불명확"
+
+  - input: "How is the K-beauty trend going in the US market?"
+    output:
+      intent:
+        domain: "analysis"
+        category: "trend_analysis"
+        subcategory: "market_trend"
+        confidence: 0.85
+      entities:
+        - {type: "keyword", value: "K-beauty", confidence: 0.95}
+        - {type: "source", value: "google_trends", confidence: 0.7}
+      plan_hint: "Google Trends and market data analysis needed for K-beauty trends in US market"
+      requires_clarification: false
+      clarification_question: null
+      context_summary: "US market K-beauty trend analysis request"

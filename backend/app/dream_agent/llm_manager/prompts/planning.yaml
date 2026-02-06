@@ -1,0 +1,151 @@
+# ============================================================
+# Planning Layer Prompts (V2)
+# ============================================================
+#
+# Planning = "무엇을 할지" 결정 (Todo 문서 생성)
+# 실행 전략(직렬/병렬/스웜)은 Execution Layer가 결정
+#
+# V1 대비 변경:
+# - workflow_type(linear/parallel/mixed) 제거 → Execution이 결정
+# - ml_pipeline/biz_pipeline 분리 제거 → 통합 todos
+# - layer: "ml_execution"/"biz_execution" → tool의 category로 대체
+# - depends_on을 tool name으로 지정 (uuid 아닌)
+# ============================================================
+
+llm_config:
+  model: "default"
+  temperature: 0.3            # 계획 생성은 약간의 창의성 허용
+  max_tokens: 4096
+
+system_prompt: |
+  You are a planning expert for the Dream Agent system.
+
+  ## Your Role: PLAN ONLY
+  You create a Todo document that describes WHAT needs to be done.
+  You do NOT decide HOW to execute (serial/parallel/etc) - that's the Execution Layer's job.
+
+  ## Available Tools
+  {available_tools}
+
+  ## Planning Rules
+
+  1. **Todo = 하나의 도구 실행 단위**
+     - 각 Todo는 반드시 하나의 tool에 매핑
+     - tool 필드는 tools/definitions/ 에 정의된 이름만 사용
+
+  2. **의존성은 tool name으로 지정**
+     - depends_on: ["collector"] → collector 도구의 Todo가 완료된 후 실행
+     - 여러 소스에서 수집 시 각 collector Todo는 독립적 (의존성 없음)
+
+  3. **params는 해당 도구의 parameters에 맞게 생성**
+     - 사용자 입력에서 키워드, 소스 등을 추출하여 params에 포함
+     - 도구 정의의 required=true 파라미터는 반드시 포함
+
+  4. **승인 필요 도구 표시**
+     - requires_approval: true인 도구는 Todo에도 표시
+
+  ## Response Format (JSON)
+  {
+    "plan_description": "계획 요약 (한 문장)",
+    "total_steps": 6,
+    "estimated_cost": 0.05,
+    "requires_approval": false,
+    "todos": [
+      {
+        "task": "작업 설명",
+        "tool": "collector",
+        "priority": 10,
+        "depends_on": [],
+        "params": {
+          "source": "amazon",
+          "keyword": "라네즈"
+        }
+      }
+    ]
+  }
+
+user_template: |
+  Create a plan for this request:
+
+  User Input: {user_input}
+  Language: {language}
+
+  Intent Analysis:
+  {cognitive_result}
+
+  Generate a plan with Todo items in JSON format.
+  Remember: describe WHAT to do, not HOW to execute.
+
+# 언어별 추가 지시
+language_instructions:
+  ko: "plan_description과 task를 한국어로 작성하세요."
+  en: "Write plan_description and task in English."
+  ja: "plan_descriptionとtaskを日本語で書いてください。"
+
+# Few-shot 예시
+examples:
+  - input: "아마존과 올리브영에서 라네즈 리뷰 분석해서 보고서 만들어줘"
+    cognitive_result:
+      intent: {domain: "analysis", category: "review_analysis"}
+      entities:
+        - {type: "brand", value: "라네즈"}
+        - {type: "source", value: "amazon"}
+        - {type: "source", value: "oliveyoung"}
+    output:
+      plan_description: "라네즈 리뷰를 아마존/올리브영에서 수집, 분석 후 보고서 생성"
+      total_steps: 6
+      estimated_cost: 0.03
+      requires_approval: false
+      todos:
+        - task: "아마존에서 라네즈 리뷰 수집"
+          tool: "collector"
+          priority: 10
+          depends_on: []
+          params: {source: "amazon", keyword: "라네즈"}
+
+        - task: "올리브영에서 라네즈 리뷰 수집"
+          tool: "collector"
+          priority: 10
+          depends_on: []
+          params: {source: "oliveyoung", keyword: "라네즈"}
+
+        - task: "수집된 리뷰 데이터 전처리"
+          tool: "preprocessor"
+          priority: 8
+          depends_on: ["collector"]
+          params: {remove_duplicates: true, normalize_text: true}
+
+        - task: "리뷰 감성 분석"
+          tool: "sentiment_analyzer"
+          priority: 7
+          depends_on: ["preprocessor"]
+          params: {analysis_type: "absa"}
+
+        - task: "분석 인사이트 도출"
+          tool: "insight_generator"
+          priority: 6
+          depends_on: ["sentiment_analyzer"]
+          params: {max_insights: 10}
+
+        - task: "분석 보고서 생성"
+          tool: "report_generator"
+          priority: 5
+          depends_on: ["insight_generator"]
+          params: {template: "standard", format: "markdown"}
+
+  - input: "인스타그램용 숏폼 영상 만들어줘"
+    cognitive_result:
+      intent: {domain: "content", category: "video"}
+      entities:
+        - {type: "keyword", value: "숏폼"}
+    output:
+      plan_description: "인스타그램 숏폼 마케팅 영상 생성"
+      total_steps: 1
+      estimated_cost: 2.50
+      requires_approval: true
+      todos:
+        - task: "인스타그램 숏폼 영상 생성"
+          tool: "video_generator"
+          priority: 10
+          depends_on: []
+          params: {platform: "instagram", style: "dynamic", duration_sec: 15}

@@ -1,0 +1,54 @@
+# Tool: report_generator
+# 리포트 생성기 - 분석 결과를 리포트 문서로 생성
+
+name: report_generator
+description: |
+  분석 결과와 인사이트를 기반으로 리포트를 생성합니다.
+  Markdown, HTML, PDF 형식을 지원합니다.
+version: "2.0.0"
+
+category: content
+executor: "executors.content_executor.ContentExecutor"
+
+parameters:
+  - name: template
+    type: string
+    required: false
+    default: "standard"
+    description: 리포트 템플릿
+    enum: ["standard", "detailed", "executive", "competitive"]
+  - name: format
+    type: string
+    required: false
+    default: "markdown"
+    description: 출력 형식
+    enum: ["markdown", "html", "pdf"]
+  - name: language
+    type: string
+    required: false
+    default: "ko"
+    description: 리포트 언어
+    enum: ["ko", "en", "ja"]
+  - name: include_charts
+    type: boolean
+    required: false
+    default: true
+    description: 차트/그래프 포함 여부
+
+timeout_sec: 180
+max_retries: 2
+requires_approval: false
+
+dependencies:
+  - insight_generator
+produces:
+  - report_content
+  - report_path
+
+has_cost: false
+estimated_cost: 0.0
+
+tags:
+  - content
+  - report
+  - document

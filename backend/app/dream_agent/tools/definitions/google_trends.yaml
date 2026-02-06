@@ -1,0 +1,51 @@
+# Tool: google_trends
+# Google Trends 데이터 수집
+
+name: google_trends
+description: |
+  Google Trends에서 검색 트렌드 데이터를 수집합니다.
+  키워드별 검색 관심도, 관련 쿼리, 지역별 관심도를 제공합니다.
+version: "2.0.0"
+
+category: data
+executor: "executors.data_executor.DataExecutor"
+
+parameters:
+  - name: keywords
+    type: array
+    required: true
+    description: 검색할 키워드 목록 (최대 5개)
+  - name: geo
+    type: string
+    required: false
+    default: "KR"
+    description: "지역 코드 (KR, US, JP 등)"
+  - name: timeframe
+    type: string
+    required: false
+    default: "today 3-m"
+    description: "검색 기간 (today 1-m, today 3-m, today 12-m)"
+  - name: category
+    type: integer
+    required: false
+    default: 0
+    description: Google 카테고리 ID (0=전체)
+
+timeout_sec: 180
+max_retries: 3
+requires_approval: false
+
+dependencies: []
+produces:
+  - trend_data
+  - interest_over_time
+  - related_queries
+
+has_cost: true
+estimated_cost: 0.005
+
+tags:
+  - data
+  - trends
+  - google
+  - market

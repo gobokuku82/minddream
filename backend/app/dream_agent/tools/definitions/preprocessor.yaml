@@ -1,0 +1,51 @@
+# Tool: preprocessor
+# 데이터 전처리기 - 수집된 원시 데이터를 분석 가능한 형태로 변환
+
+name: preprocessor
+description: |
+  수집된 원시 리뷰/댓글 데이터를 정제하고 분석 가능한 형태로 변환합니다.
+  중복 제거, 텍스트 정규화, 언어 감지, 토큰화 등을 수행합니다.
+version: "2.0.0"
+
+category: data
+executor: "executors.data_executor.DataExecutor"
+
+parameters:
+  - name: remove_duplicates
+    type: boolean
+    required: false
+    default: true
+    description: 중복 리뷰 제거
+  - name: normalize_text
+    type: boolean
+    required: false
+    default: true
+    description: 텍스트 정규화 (특수문자, 공백 등)
+  - name: min_length
+    type: integer
+    required: false
+    default: 10
+    description: 최소 텍스트 길이 (이하 필터링)
+  - name: detect_language
+    type: boolean
+    required: false
+    default: true
+    description: 언어 자동 감지
+
+timeout_sec: 120
+max_retries: 2
+requires_approval: false
+
+dependencies:
+  - collector
+produces:
+  - preprocessed_reviews
+  - preprocessing_stats
+
+has_cost: false
+estimated_cost: 0.0
+
+tags:
+  - data
+  - preprocessing
+  - cleaning

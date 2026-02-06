@@ -1,0 +1,104 @@
+# ============================================================
+# Execution Layer Prompts (V2)
+# ============================================================
+#
+# Execution = "어떻게 할지" 결정 (실행 전략 선택)
+# V1에는 없던 새로운 프롬프트
+#
+# ExecutionStrategy:
+# - SINGLE: Todo 1개 → 단일 실행
+# - SEQUENTIAL: 의존성 체인 → 순차 실행
+# - PARALLEL: 독립 Todo → Send API 병렬 실행
+# - SWARM: 동일 도구 다중 인스턴스 → 대량 병렬
+# - CYCLIC: 반복 실행 (품질 미달 시 재시도)
+# ============================================================
+
+llm_config:
+  model: "default"
+  temperature: 0.0            # 전략 결정은 결정적이어야 함
+  max_tokens: 512
+
+# 전략 결정 프롬프트 (strategy.py에서 사용)
+strategy_prompt: |
+  You are an execution strategy optimizer.
+
+  Given a set of Todos with their dependencies, determine the optimal execution strategy.
+
+  ## Available Strategies
+
+  | Strategy   | When to Use                                          |
+  |-----------|------------------------------------------------------|
+  | SINGLE     | Todo가 1개일 때                                       |
+  | SEQUENTIAL | 모든 Todo가 선형 의존성 체인일 때 (A→B→C)               |
+  | PARALLEL   | 독립적인 Todo가 2개 이상일 때 (Send API 사용)           |
+  | SWARM      | 동일 도구가 다른 파라미터로 3개 이상 실행될 때            |
+  | CYCLIC     | 품질 검증 후 재실행이 필요할 때                          |
+
+  ## Decision Rules
+  1. Todo가 1개 → SINGLE
+  2. 모든 Todo가 일직선 의존 → SEQUENTIAL
+  3. 같은 tool + 다른 params가 3개 이상 → SWARM (예: collector x 3 소스)
+  4. 독립 Todo가 존재 → PARALLEL (의존 있는 것은 그룹 내 순차)
+  5. 품질 기준이 명시된 경우 → CYCLIC
+
+  ## Input
+  Todos:
+  {todos_summary}
+
+  Dependency Graph:
+  {dependency_graph}
+
+  ## Response Format (JSON)
+  {
+    "strategy": "PARALLEL",
+    "reason": "collector 3개가 독립적으로 실행 가능, 이후 preprocessor는 순차",
+    "execution_groups": [
+      {
+        "group_id": 1,
+        "strategy": "SWARM",
+        "todo_ids": ["todo-1", "todo-2", "todo-3"],
+        "description": "3개 소스에서 동시 데이터 수집"
+      },
+      {
+        "group_id": 2,
+        "strategy": "SEQUENTIAL",
+        "todo_ids": ["todo-4", "todo-5", "todo-6"],
+        "depends_on_group": 1,
+        "description": "전처리 → 분석 → 인사이트 순차 실행"
+      }
+    ]
+  }
+
+# 개별 도구 실행 시 컨텍스트 프롬프트 (execute_todo 노드에서 사용)
+execution_context_prompt: |
+  Execute the following tool with the given parameters.
+
+  Tool: {tool_name}
+  Task: {task_description}
+  Parameters: {params}
+
+  Previous Results (context):
+  {previous_results}
+
+  Execute and return results.
+
+# 에러 복구 전략 프롬프트
+error_recovery_prompt: |
+  A tool execution failed. Determine the recovery action.
+
+  Failed Tool: {tool_name}
+  Error: {error_message}
+  Retry Count: {retry_count} / {max_retries}
+
+  Options:
+  - RETRY: 동일 파라미터로 재시도
+  - RETRY_MODIFIED: 파라미터 수정 후 재시도
+  - SKIP: 건너뛰고 다음 Todo 진행
+  - ABORT: 전체 실행 중단
+
+  Response (JSON):
+  {
+    "action": "RETRY",
+    "reason": "일시적 네트워크 오류로 판단",
+    "modified_params": null
+  }

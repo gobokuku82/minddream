@@ -1,0 +1,45 @@
+# Tool: insight_generator
+# 인사이트 생성기 - 분석 결과 종합 인사이트 도출
+
+name: insight_generator
+description: |
+  감성 분석, 키워드 분석 등의 결과를 종합하여 비즈니스 인사이트를 생성합니다.
+  LLM을 활용하여 데이터 기반의 실행 가능한 인사이트를 도출합니다.
+version: "2.0.0"
+
+category: analysis
+executor: "executors.analysis_executor.AnalysisExecutor"
+
+parameters:
+  - name: max_insights
+    type: integer
+    required: false
+    default: 10
+    description: 최대 인사이트 수
+  - name: include_trends
+    type: boolean
+    required: false
+    default: false
+    description: K-Beauty 트렌드 RAG 컨텍스트 포함 여부
+  - name: focus_area
+    type: string
+    required: false
+    description: "집중 분석 영역 (예: marketing, product, competition)"
+
+timeout_sec: 180
+max_retries: 2
+requires_approval: false
+
+dependencies:
+  - sentiment_analyzer
+produces:
+  - insights
+  - recommendations
+
+has_cost: true
+estimated_cost: 0.02
+
+tags:
+  - analysis
+  - insight
+  - llm

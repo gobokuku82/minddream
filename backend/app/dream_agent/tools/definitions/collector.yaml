@@ -1,0 +1,64 @@
+# Tool: collector
+# 데이터 수집기 - 외부 소스에서 리뷰/댓글 데이터 수집
+
+name: collector
+description: |
+  외부 데이터 소스에서 리뷰, 댓글, 평점 데이터를 수집합니다.
+  소스별로 별도의 Todo가 생성되어야 합니다.
+  수집된 데이터는 preprocessor의 입력으로 사용됩니다.
+version: "2.0.0"
+
+category: data
+executor: "executors.data_executor.DataExecutor"
+
+parameters:
+  - name: source
+    type: string
+    required: true
+    description: 데이터 수집 소스
+    enum: ["amazon", "oliveyoung", "youtube", "tiktok", "coupang", "sephora"]
+  - name: keyword
+    type: string
+    required: true
+    description: 검색 키워드 (제품명, 브랜드명 등)
+  - name: limit
+    type: integer
+    required: false
+    default: 1000
+    description: 최대 수집 건수
+  - name: date_from
+    type: string
+    required: false
+    description: "수집 시작일 (ISO 8601: 2026-01-01)"
+  - name: include_metadata
+    type: boolean
+    required: false
+    default: true
+    description: 메타데이터 포함 여부 (작성일, 평점, 좋아요 수 등)
+
+timeout_sec: 300
+max_retries: 3
+requires_approval: false
+
+dependencies: []
+produces:
+  - raw_reviews
+  - collection_metadata
+
+has_cost: false
+estimated_cost: 0.0
+
+tags:
+  - data
+  - collection
+  - reviews
+
+examples:
+  - description: "아마존에서 라네즈 리뷰 수집"
+    input:
+      source: "amazon"
+      keyword: "라네즈 워터뱅크"
+      limit: 500
+    output:
+      raw_reviews: [{text: "Great moisturizer!", rating: 5, date: "2026-01-15"}]
+      collection_metadata: {source: "amazon", count: 487, date_range: "2025-10~2026-01"}

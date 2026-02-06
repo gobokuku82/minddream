@@ -1,0 +1,67 @@
+# Tool: video_generator
+# 영상 생성기 - 마케팅 영상 콘텐츠 생성 (비용 발생, 승인 필요)
+
+name: video_generator
+description: |
+  인사이트와 스토리보드를 기반으로 마케팅 영상 콘텐츠를 생성합니다.
+  외부 영상 생성 API를 사용하며, 비용이 발생합니다.
+  실행 전 사용자 승인이 필요합니다.
+version: "2.0.0"
+
+category: content
+executor: "executors.content_executor.ContentExecutor"
+
+parameters:
+  - name: style
+    type: string
+    required: false
+    default: "modern"
+    description: 영상 스타일
+    enum: ["modern", "minimal", "dynamic", "luxury", "casual"]
+  - name: resolution
+    type: string
+    required: false
+    default: "1080p"
+    description: 해상도
+    enum: ["720p", "1080p", "4k"]
+  - name: duration_sec
+    type: integer
+    required: false
+    default: 30
+    description: 영상 길이 (초)
+  - name: platform
+    type: string
+    required: false
+    default: "instagram"
+    description: 대상 플랫폼
+    enum: ["instagram", "youtube", "tiktok"]
+
+timeout_sec: 600
+max_retries: 1
+requires_approval: true           # HITL 승인 필요
+
+dependencies:
+  - insight_generator
+produces:
+  - video_url
+  - video_metadata
+
+has_cost: true
+estimated_cost: 2.50
+
+tags:
+  - content
+  - video
+  - marketing
+  - expensive
+
+examples:
+  - description: "인스타그램 숏폼 영상 생성"
+    input:
+      style: "dynamic"
+      resolution: "1080p"
+      duration_sec: 15
+      platform: "instagram"
+    output:
+      video_url: "/outputs/video_20260205_001.mp4"
+      video_metadata: {duration: 15, resolution: "1080p", size_mb: 12.5}
