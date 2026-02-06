@@ -3,20 +3,26 @@
 Reference: docs/specs/API_SPEC.md#agent
 """
 
+import asyncio
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket
 
 from api.schemas.request import AgentRunRequest
-from api.schemas.response import AgentRunResponse
+from api.schemas.response import AgentRunAsyncResponse, AgentRunResponse
+from api.websocket import get_connection_manager, get_websocket_handler
 from app.core.errors import AgentError
 from app.core.logging import get_logger
 from app.dream_agent.orchestrator import get_agent
 from app.dream_agent.states.agent_state import create_initial_state
+from app.dream_agent.workflow_managers.hitl_manager import get_pause_controller
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 logger = get_logger(__name__)
+
+# 비동기 실행 상태 저장
+_async_sessions: dict[str, dict[str, Any]] = {}
 
 
 @router.post("/run", response_model=AgentRunResponse)
@@ -124,11 +130,155 @@ async def stop_agent(session_id: str) -> dict[str, Any]:
     Returns:
         중지 결과
     """
-    # TODO: 실제 중지 구현
-    logger.info("Agent stop requested", session_id=session_id)
+    pause_controller = get_pause_controller()
+    success = pause_controller.pause(session_id, reason="user_stop")
+
+    logger.info("Agent stop requested", session_id=session_id, success=success)
 
     return {
         "session_id": session_id,
-        "status": "stopped",
-        "message": "Stop not implemented yet",
+        "status": "stopped" if success else "not_running",
+        "message": "Agent stopped" if success else "Session not active",
     }
+
+
+@router.post("/run-async", response_model=AgentRunAsyncResponse)
+async def run_agent_async(
+    request: AgentRunRequest,
+    background_tasks: BackgroundTasks,
+) -> AgentRunAsyncResponse:
+    """비동기 에이전트 실행 (백그라운드)
+
+    WebSocket으로 진행 상황 수신
+
+    Args:
+        request: 에이전트 실행 요청
+        background_tasks: FastAPI BackgroundTasks
+
+    Returns:
+        세션 ID와 연결 정보
+    """
+    session_id = request.session_id or str(uuid.uuid4())
+
+    logger.info(
+        "Async agent run started",
+        session_id=session_id,
+        message_length=len(request.message),
+    )
+
+    # 세션 상태 초기화
+    _async_sessions[session_id] = {
+        "status": "pending",
+        "message": request.message,
+        "language": request.language,
+    }
+
+    # 백그라운드 태스크로 에이전트 실행
+    background_tasks.add_task(
+        _run_agent_background,
+        session_id=session_id,
+        message=request.message,
+        language=request.language,
+    )
+
+    return AgentRunAsyncResponse(
+        session_id=session_id,
+        status="pending",
+        websocket_url=f"/ws/{session_id}",
+    )
+
+
+async def _run_agent_background(
+    session_id: str,
+    message: str,
+    language: str,
+) -> None:
+    """백그라운드 에이전트 실행"""
+    from api.websocket import (
+        create_complete,
+        create_error,
+        create_layer_complete,
+        create_layer_start,
+    )
+
+    connection_manager = get_connection_manager()
+
+    try:
+        _async_sessions[session_id]["status"] = "running"
+
+        # Get agent
+        agent = await get_agent()
+
+        # Create initial state
+        initial_state = create_initial_state(
+            session_id=session_id,
+            user_input=message,
+            language=language,
+        )
+
+        config = {"configurable": {"thread_id": session_id}}
+
+        # Execute with streaming
+        async for event in agent.astream_events(initial_state, config=config, version="v2"):
+            event_type = event.get("event")
+
+            # 레이어 시작/완료 이벤트 전송
+            if event_type == "on_chain_start":
+                name = event.get("name", "")
+                if name.endswith("_node"):
+                    layer = name.replace("_node", "")
+                    await connection_manager.send_message(
+                        session_id,
+                        create_layer_start(layer, session_id),
+                    )
+
+            elif event_type == "on_chain_end":
+                name = event.get("name", "")
+                if name.endswith("_node"):
+                    layer = name.replace("_node", "")
+                    output = event.get("data", {}).get("output", {})
+                    await connection_manager.send_message(
+                        session_id,
+                        create_layer_complete(layer, output, session_id),
+                    )
+
+        # 최종 결과 조회
+        final_state = await agent.aget_state(config)
+        response_result = final_state.values.get("response_result", {})
+
+        # 완료 메시지 전송
+        await connection_manager.send_message(
+            session_id,
+            create_complete(response_result, session_id),
+        )
+
+        _async_sessions[session_id]["status"] = "completed"
+        _async_sessions[session_id]["result"] = response_result
+
+        logger.info("Async agent run completed", session_id=session_id)
+
+    except Exception as e:
+        logger.exception("Async agent error", session_id=session_id)
+
+        _async_sessions[session_id]["status"] = "failed"
+        _async_sessions[session_id]["error"] = str(e)
+
+        await connection_manager.send_message(
+            session_id,
+            create_error("E5003", str(e), session_id),
+        )
+
+
+@router.websocket("/ws/{session_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    session_id: str,
+) -> None:
+    """WebSocket 연결 엔드포인트
+
+    Args:
+        websocket: WebSocket 연결
+        session_id: 세션 ID
+    """
+    handler = get_websocket_handler()
+    await handler.handle_connection(websocket, session_id)

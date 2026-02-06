@@ -9,7 +9,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import agent_router, health_router
+from api.routes import agent_router, health_router, hitl_router
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
 from app.dream_agent.orchestrator import close_checkpointer, get_checkpointer
@@ -76,6 +76,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health_router)
     app.include_router(agent_router, prefix="/api")
+    app.include_router(hitl_router, prefix="/api")
 
     return app
 
