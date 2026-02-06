@@ -7,21 +7,22 @@ SelectorEventLoop 정책을 설정한 후 uvicorn을 시작합니다.
     python run_server.py
 """
 
-import sys
 import asyncio
+import sys
 
 # Windows: psycopg async는 SelectorEventLoop 필요
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 import uvicorn
+
 from backend.app.core.config import settings
 
 if __name__ == "__main__":
     uvicorn.run(
         "backend.api.main:app",
-        host=settings.API_HOST,
-        port=settings.API_PORT,
+        host=settings.HOST,
+        port=settings.PORT,
         reload=settings.DEBUG,
         log_level="info",
     )
